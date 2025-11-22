@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+      
+      // User's thread inventory
+      match /inventory/{threadId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // User's patterns
+      match /patterns/{patternId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update, delete: if isOwner(userId) && 
+                                  resource.data.userId == userId;
+      }
+      
+      // User's tokens balance
+      match /tokens/{doc} {
+        allow read: if isOwner(userId);
+        // Only backend can write tokens
+        allow write: if false;
+      }
+    }
+    
+    // Public threads database (read-only for all authenticated users)
+    match /threads/{threadId} {
+      allow read: if isAuthenticated();
+      allow write: if false;  // Only admin can modify
+    }
+    
+    // Marketplace patterns (publicly readable)
+    match /marketplace/{patternId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && 
+                               resource.data.authorId == request.auth.uid;
+    }
+    
+    // Purchases
+    match /purchases/{purchaseId} {
+      allow read: if isAuthenticated() && 
+                     resource.data.buyerId == request.auth.uid;
+      allow create: if isAuthenticated();
+      allow write: if false;  // Immutable after creation
+    }
+  }
+}

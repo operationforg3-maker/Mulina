@@ -1,0 +1,55 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isPDF() {
+      return request.resource.contentType == 'application/pdf';
+    }
+    
+    function isValidSize() {
+      // Max 10MB
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+    
+    // User uploads (images for conversion)
+    match /uploads/{userId}/{imageId} {
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow write: if isAuthenticated() && 
+                      isOwner(userId) && 
+                      isImage() && 
+                      isValidSize();
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Generated patterns (PDFs)
+    match /patterns/{userId}/{patternId}.pdf {
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow write: if false;  // Only backend can write
+    }
+    
+    // Pattern thumbnails (publicly readable)
+    match /thumbnails/{patternId}.jpg {
+      allow read: if true;
+      allow write: if false;  // Only backend
+    }
+    
+    // Marketplace pattern images
+    match /marketplace/{patternId}/{imageId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+  }
+}

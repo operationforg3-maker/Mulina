@@ -1,0 +1,101 @@
+name: Mobile Build & Test
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile-*.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'mobile/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: mobile/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd mobile
+        npm ci
+    
+    - name: Run linting
+      run: |
+        cd mobile
+        npm run lint
+    
+    - name: Run type checking
+      run: |
+        cd mobile
+        npm run type-check
+    
+    - name: Run tests
+      run: |
+        cd mobile
+        npm test -- --coverage
+
+  build-preview:
+    needs: test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Expo
+      uses: expo/expo-github-action@v8
+      with:
+        expo-version: latest
+        token: ${{ secrets.EXPO_TOKEN }}
+    
+    - name: Install dependencies
+      run: |
+        cd mobile
+        npm ci
+    
+    - name: Build preview
+      run: |
+        cd mobile
+        eas build --profile preview --platform all --non-interactive
+
+  publish:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Expo
+      uses: expo/expo-github-action@v8
+      with:
+        expo-version: latest
+        token: ${{ secrets.EXPO_TOKEN }}
+    
+    - name: Install dependencies
+      run: |
+        cd mobile
+        npm ci
+    
+    - name: Build production
+      run: |
+        cd mobile
+        eas build --profile production --platform all --non-interactive
+    
+    - name: Submit to stores
+      if: startsWith(github.event.head_commit.message, '[RELEASE]')
+      run: |
+        cd mobile
+        eas submit --platform ios --latest
+        eas submit --platform android --latest

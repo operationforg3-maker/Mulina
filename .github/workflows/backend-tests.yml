@@ -1,0 +1,80 @@
+name: Backend Tests & Deploy
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-*.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+    
+    - name: Run linting
+      run: |
+        cd backend
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+    
+    - name: Run type checking
+      run: |
+        cd backend
+        mypy . --ignore-missing-imports
+    
+    - name: Run tests
+      run: |
+        cd backend
+        pytest tests/ --cov=. --cov-report=xml --cov-report=html
+    
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./backend/coverage.xml
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+    
+    - name: Build and push Docker image
+      run: |
+        cd backend
+        gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/smartstitch-api
+    
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy smartstitch-api \
+          --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/smartstitch-api \
+          --platform managed \
+          --region europe-central2 \
+          --allow-unauthenticated \
+          --set-env-vars FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }} \
+          --memory 2Gi \
+          --timeout 300

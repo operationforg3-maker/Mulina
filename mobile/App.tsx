@@ -2,11 +2,11 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
+import HomeScreen from './src/screens/HomeScreen';
 import ApiTestScreen from './src/screens/ApiTestScreen';
+import ImagePickerScreen from './src/screens/ImagePickerScreen';
 
 // Screens (TODO: Create these)
-// import HomeScreen from './src/screens/HomeScreen';
-// import ImagePickerScreen from './src/screens/ImagePickerScreen';
 // import PatternEditorScreen from './src/screens/PatternEditorScreen';
 // import ExportScreen from './src/screens/ExportScreen';
 
@@ -42,7 +42,7 @@ export default function App() {
     <NavigationContainer>
       <StatusBar style="auto" />
       <Stack.Navigator
-        initialRouteName="ApiTest"
+        initialRouteName="Home"
         screenOptions={{
           headerStyle: {
             backgroundColor: '#6366f1',
@@ -54,14 +54,19 @@ export default function App() {
         }}
       >
         <Stack.Screen 
-          name="ApiTest" 
-          component={ApiTestScreen}
-          options={{ title: 'Mulina - API Test' }}
+          name="Home" 
+          component={HomeScreen}
+          options={{ headerShown: false }}
         />
         <Stack.Screen 
-          name="Home" 
-          component={PlaceholderScreen}
-          options={{ title: 'Mulina' }}
+          name="ImagePicker" 
+          component={ImagePickerScreen}
+          options={{ title: 'Nowy wzór' }}
+        />
+        <Stack.Screen 
+          name="ApiTest" 
+          component={ApiTestScreen}
+          options={{ title: 'API Test' }}
         />
         <Stack.Screen 
           name="ImagePicker" 

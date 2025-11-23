@@ -81,29 +81,54 @@ export default function ImagePickerScreen() {
     setLoading(true);
 
     try {
-      // TODO: Implement actual conversion
-      // 1. Upload image to Firebase Storage
-      // 2. Call backend API /api/v1/convert
-      // 3. Wait for pattern generation
-      // 4. Navigate to PatternEditor
+      // TODO: Upload real image to Firebase Storage
+      // For now, use picsum.photos as demo image URL
+      const demoImageUrl = 'https://picsum.photos/400/300';
 
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate processing
+      const response = await fetch('http://127.0.0.1:8000/api/v1/convert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image_url: demoImageUrl,
+          pattern_type: patternType,
+          thread_brand: threadBrand,
+          max_colors: maxColors,
+          aida_count: aidaCount,
+          max_width: 200,
+          max_height: 200,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
 
       Alert.alert(
-        'Demo',
-        'Funkcja konwersji będzie dostępna po skonfigurowaniu Firebase i backendu.',
+        '✅ Wzór wygenerowany!',
+        `ID: ${data.pattern_id}\n` +
+          `Rozmiar: ${data.dimensions.width_stitches}x${data.dimensions.height_stitches} ściegów\n` +
+          `Kolory: ${data.color_palette.length} nici DMC\n` +
+          `Wymiary: ${data.dimensions.width_cm}x${data.dimensions.height_cm} cm`,
         [
           {
             text: 'OK',
             onPress: () => {
-              // navigation.navigate('PatternEditor', { patternId: 'demo' });
+              // TODO: Navigate to PatternEditor when implemented
+              // navigation.navigate('PatternEditor', { patternId: data.pattern_id });
             },
           },
         ]
       );
     } catch (error) {
       console.error('Conversion error:', error);
-      Alert.alert('Błąd', 'Nie udało się przetworzyć obrazu');
+      Alert.alert(
+        'Błąd połączenia',
+        'Nie udało się przetworzyć obrazu. Sprawdź czy backend działa (port 8000).'
+      );
     } finally {
       setLoading(false);
     }

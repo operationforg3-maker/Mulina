@@ -69,11 +69,6 @@ export default function App() {
           options={{ title: 'API Test' }}
         />
         <Stack.Screen 
-          name="ImagePicker" 
-          component={PlaceholderScreen}
-          options={{ title: 'Select Image' }}
-        />
-        <Stack.Screen 
           name="PatternEditor" 
           component={PlaceholderScreen}
           options={{ title: 'Edit Pattern' }}

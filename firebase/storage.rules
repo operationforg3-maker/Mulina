@@ -35,13 +35,13 @@ service firebase.storage {
     }
     
     // Generated patterns (PDFs)
-    match /patterns/{userId}/{patternId}.pdf {
+    match /patterns/{userId}/{patternId} {
       allow read: if isAuthenticated() && isOwner(userId);
       allow write: if false;  // Only backend can write
     }
     
     // Pattern thumbnails (publicly readable)
-    match /thumbnails/{patternId}.jpg {
+    match /thumbnails/{patternId} {
       allow read: if true;
       allow write: if false;  // Only backend
     }

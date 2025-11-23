@@ -11,7 +11,7 @@ export interface ConversionRequest {
   maxColors: number;
   aidaCount: 14 | 16 | 18 | 20;
   enableDithering: boolean;
-  threadBrand: 'DMC' | 'Anchor' | 'Ariadna';
+  threadBrand: 'DMC' | 'Anchor' | 'Ariadna' | 'Madeira';
   useInventory: boolean;
 }
 

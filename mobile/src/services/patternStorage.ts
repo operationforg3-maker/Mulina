@@ -14,6 +14,7 @@ export interface StoredPattern {
   created_at: string;
   updated_at: string;
   thumbnail?: string; // base64 image
+  image_url?: string; // Firebase Storage URL
   grid_data: {
     grid: number[][];
     type: string;
@@ -48,6 +49,7 @@ export interface PatternListItem {
   created_at: string;
   updated_at: string;
   thumbnail?: string;
+  image_url?: string;
   width_stitches: number;
   height_stitches: number;
   color_count: number;
@@ -149,6 +151,7 @@ async function updatePatternsList(pattern: StoredPattern): Promise<void> {
     created_at: pattern.created_at,
     updated_at: pattern.updated_at,
     thumbnail: pattern.thumbnail,
+    image_url: pattern.image_url,
     width_stitches: pattern.dimensions.width_stitches,
     height_stitches: pattern.dimensions.height_stitches,
     color_count: pattern.color_palette.length,

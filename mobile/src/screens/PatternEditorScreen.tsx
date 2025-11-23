@@ -9,6 +9,7 @@ import {
   Alert,
   Dimensions,
   Platform,
+  Image,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -35,6 +36,9 @@ interface Thread {
 
 interface Pattern {
   pattern_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
   grid_data: {
     grid: number[][];
     type: string;
@@ -49,6 +53,12 @@ interface Pattern {
     height_cm: number;
   };
   estimated_time: number;
+  image_url?: string;
+  progress?: {
+    completed_stitches: boolean[][];
+    current_color_index: number;
+    last_worked: string;
+  };
 }
 
 const CELL_SIZE = 20; // pixels per stitch
@@ -63,11 +73,14 @@ export default function PatternEditorScreen() {
   const [pattern, setPattern] = useState<Pattern | null>(initialPattern || null);
   const [loading, setLoading] = useState(!initialPattern);
   const [cellSize, setCellSize] = useState(CELL_SIZE);
-  const [selectedTool, setSelectedTool] = useState<'view' | 'pencil' | 'eraser'>('view');
+  const [selectedTool, setSelectedTool] = useState<'view' | 'pencil' | 'eraser' | 'fill' | 'backstitch'>('view');
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [showGrid, setShowGrid] = useState(true);
   const [showSymbols, setShowSymbols] = useState(true);
   const [companionMode, setCompanionMode] = useState(false);
+  const [editHistory, setEditHistory] = useState<number[][][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [backstitch, setBackstitch] = useState<Array<{start: [number, number], end: [number, number], color: number}>>([]);
 
   useEffect(() => {
     if (!initialPattern) {
@@ -118,7 +131,7 @@ export default function PatternEditorScreen() {
                 : '#fff';
 
               return (
-                <View
+                <TouchableOpacity
                   key={`cell-${rowIndex}-${colIndex}`}
                   style={[
                     styles.gridCell,
@@ -129,6 +142,8 @@ export default function PatternEditorScreen() {
                       borderWidth: showGrid ? 0.5 : 0,
                     },
                   ]}
+                  onPress={() => handleCellPress(rowIndex, colIndex)}
+                  activeOpacity={selectedTool === 'view' ? 1 : 0.7}
                 >
                   {showSymbols && thread && cellSize >= 15 && (
                     <Text
@@ -143,7 +158,7 @@ export default function PatternEditorScreen() {
                       {thread.symbol}
                     </Text>
                   )}
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>
@@ -156,6 +171,88 @@ export default function PatternEditorScreen() {
     // Calculate luminance and return black or white for best contrast
     const luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
     return luminance > 0.5 ? '#000' : '#fff';
+  };
+
+  const handleCellPress = (rowIndex: number, colIndex: number) => {
+    if (!pattern || selectedTool === 'view') return;
+    const newGrid = pattern.grid_data.grid.map(row => [...row]);
+    
+    if (selectedTool === 'pencil') {
+      newGrid[rowIndex][colIndex] = selectedColorIndex;
+    } else if (selectedTool === 'eraser') {
+      newGrid[rowIndex][colIndex] = -1;
+    } else if (selectedTool === 'fill') {
+      floodFill(newGrid, rowIndex, colIndex, newGrid[rowIndex][colIndex], selectedColorIndex);
+    }
+    
+    saveToHistory(newGrid);
+    setPattern({...pattern, grid_data: {...pattern.grid_data, grid: newGrid}});
+  };
+
+  const floodFill = (grid: number[][], row: number, col: number, targetColor: number, replacementColor: number) => {
+    if (row < 0 || row >= grid.length || col < 0 || col >= grid[0].length) return;
+    if (grid[row][col] !== targetColor || targetColor === replacementColor) return;
+    grid[row][col] = replacementColor;
+    floodFill(grid, row + 1, col, targetColor, replacementColor);
+    floodFill(grid, row - 1, col, targetColor, replacementColor);
+    floodFill(grid, row, col + 1, targetColor, replacementColor);
+    floodFill(grid, row, col - 1, targetColor, replacementColor);
+  };
+
+  const saveToHistory = (newGrid: number[][]) => {
+    const newHistory = editHistory.slice(0, historyIndex + 1);
+    newHistory.push(newGrid);
+    setEditHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  };
+
+  const handleUndo = () => {
+    if (historyIndex > 0 && pattern) {
+      const prevGrid = editHistory[historyIndex - 1];
+      setPattern({...pattern, grid_data: {...pattern.grid_data, grid: prevGrid}});
+      setHistoryIndex(historyIndex - 1);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < editHistory.length - 1 && pattern) {
+      const nextGrid = editHistory[historyIndex + 1];
+      setPattern({...pattern, grid_data: {...pattern.grid_data, grid: nextGrid}});
+      setHistoryIndex(historyIndex + 1);
+    }
+  };
+
+  const removeConfetti = () => {
+    if (!pattern) return;
+    const newGrid = pattern.grid_data.grid.map(row => [...row]);
+    const visited = newGrid.map(row => row.map(() => false));
+    
+    for (let r = 0; r < newGrid.length; r++) {
+      for (let c = 0; c < newGrid[0].length; c++) {
+        if (!visited[r][c] && newGrid[r][c] !== -1) {
+          const cluster: [number, number][] = [];
+          const stack: [number, number][] = [[r, c]];
+          const color = newGrid[r][c];
+          
+          while (stack.length > 0) {
+            const [row, col] = stack.pop()!;
+            if (row < 0 || row >= newGrid.length || col < 0 || col >= newGrid[0].length) continue;
+            if (visited[row][col] || newGrid[row][col] !== color) continue;
+            visited[row][col] = true;
+            cluster.push([row, col]);
+            stack.push([row+1, col], [row-1, col], [row, col+1], [row, col-1]);
+          }
+          
+          if (cluster.length === 1) {
+            newGrid[cluster[0][0]][cluster[0][1]] = -1;
+          }
+        }
+      }
+    }
+    
+    saveToHistory(newGrid);
+    setPattern({...pattern, grid_data: {...pattern.grid_data, grid: newGrid}});
+    Alert.alert('Sukces', 'Usunięto pojedyncze ściegi (confetti)');
   };
 
   const handleUpdateProgress = async (
@@ -248,6 +345,45 @@ export default function PatternEditorScreen() {
           <Text style={styles.toolButtonText}>🧹</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={[styles.toolButton, selectedTool === 'fill' && styles.toolButtonActive]}
+          onPress={() => setSelectedTool('fill')}
+        >
+          <Text style={styles.toolButtonText}>🪣</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.toolButton, selectedTool === 'backstitch' && styles.toolButtonActive]}
+          onPress={() => setSelectedTool('backstitch')}
+        >
+          <Text style={styles.toolButtonText}>╱</Text>
+        </TouchableOpacity>
+
+        <View style={styles.toolbarSeparator} />
+
+        <TouchableOpacity
+          style={styles.toolButton}
+          onPress={handleUndo}
+          disabled={historyIndex <= 0}
+        >
+          <Text style={styles.toolButtonText}>↶</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.toolButton}
+          onPress={handleRedo}
+          disabled={historyIndex >= editHistory.length - 1}
+        >
+          <Text style={styles.toolButtonText}>↷</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.toolButton}
+          onPress={removeConfetti}
+        >
+          <Text style={styles.toolButtonText}>🎊</Text>
+        </TouchableOpacity>
+
         <View style={styles.toolbarSeparator} />
 
         <TouchableOpacity
@@ -312,8 +448,16 @@ export default function PatternEditorScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header Info */}
+      {/* Header Info + Image */}
       <View style={styles.header}>
+        {pattern.image_url && (
+          <View style={{ alignItems: 'center', marginBottom: 12 }}>
+            <Image
+              source={{ uri: pattern.image_url }}
+              style={{ width: 180, height: 135, borderRadius: 12, resizeMode: 'cover' }}
+            />
+          </View>
+        )}
         <View style={styles.headerInfo}>
           <Text style={styles.headerTitle}>Wzór {pattern.pattern_id}</Text>
           <Text style={styles.headerSubtitle}>
@@ -360,8 +504,14 @@ export default function PatternEditorScreen() {
 
         <TouchableOpacity
           style={[styles.actionButton, styles.actionButtonPrimary]}
-          onPress={() => {
-            Alert.alert('Export', 'PDF export będzie dostępny wkrótce');
+          onPress={async () => {
+            if (!pattern) return;
+            try {
+              const { exportPatternPdf } = await import('../services/pdfExport');
+              await exportPatternPdf(pattern.pattern_id);
+            } catch (err) {
+              Alert.alert('Błąd eksportu', 'Nie udało się pobrać PDF.');
+            }
           }}
         >
           <Text style={[styles.actionButtonText, { color: '#fff' }]}>📄 PDF</Text>

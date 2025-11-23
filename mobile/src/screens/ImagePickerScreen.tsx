@@ -13,6 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { savePattern, StoredPattern } from '../services/patternStorage';
+import { uploadImageToFirebase } from '../services/imageUpload';
 
 type RootStackParamList = {
   Home: undefined;
@@ -31,7 +32,7 @@ export default function ImagePickerScreen() {
   const [patternType, setPatternType] = useState<'cross_stitch' | 'outline'>('cross_stitch');
   const [maxColors, setMaxColors] = useState(30);
   const [aidaCount, setAidaCount] = useState<14 | 16 | 18 | 20>(14);
-  const [threadBrand, setThreadBrand] = useState<'DMC' | 'Anchor' | 'Ariadna'>('DMC');
+  const [threadBrand, setThreadBrand] = useState<'DMC' | 'Anchor' | 'Ariadna' | 'Madeira'>('DMC');
 
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -91,9 +92,16 @@ export default function ImagePickerScreen() {
     setLoading(true);
 
     try {
-      // TODO: Upload real image to Firebase Storage
-      // For now, use picsum.photos as demo image URL
-      const demoImageUrl = 'https://picsum.photos/400/300';
+      // Upload image to Firebase Storage
+      let imageUrl: string;
+      try {
+        imageUrl = await uploadImageToFirebase(selectedImage);
+      } catch (uploadErr) {
+        console.error('Upload error:', uploadErr);
+        Alert.alert('Błąd uploadu', 'Nie udało się wysłać zdjęcia do chmury.');
+        setLoading(false);
+        return;
+      }
 
       const response = await fetch('http://127.0.0.1:8000/api/v1/convert', {
         method: 'POST',
@@ -101,7 +109,7 @@ export default function ImagePickerScreen() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          image_url: demoImageUrl,
+          image_url: imageUrl,
           pattern_type: patternType,
           thread_brand: threadBrand,
           max_colors: maxColors,
@@ -127,6 +135,7 @@ export default function ImagePickerScreen() {
         color_palette: data.color_palette,
         dimensions: data.dimensions,
         estimated_time: data.estimated_time,
+        image_url: imageUrl,
         progress: {
           completed_stitches: Array(data.grid_data.height)
             .fill(null)
@@ -240,7 +249,7 @@ export default function ImagePickerScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Marka nici</Text>
           <View style={styles.buttonRow}>
-            {(['DMC', 'Anchor', 'Ariadna'] as const).map((brand) => (
+            {(['DMC', 'Anchor', 'Ariadna', 'Madeira'] as const).map((brand) => (
               <TouchableOpacity
                 key={brand}
                 style={[

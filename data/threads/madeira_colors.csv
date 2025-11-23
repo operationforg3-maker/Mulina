@@ -1,0 +1,31 @@
+thread_id,brand,color_code,color_name,r,g,b
+madeira_1001,Madeira,1001,White,255,255,255
+madeira_1002,Madeira,1002,Ivory,255,250,240
+madeira_1003,Madeira,1003,Pale Yellow,255,250,205
+madeira_1004,Madeira,1004,Light Yellow,255,245,200
+madeira_1005,Madeira,1005,Bright Yellow,255,235,100
+madeira_1006,Madeira,1006,Golden Yellow,255,215,50
+madeira_1007,Madeira,1007,Dark Yellow,240,200,40
+madeira_1008,Madeira,1008,Light Orange,255,220,150
+madeira_1009,Madeira,1009,Orange,255,165,70
+madeira_1010,Madeira,1010,Bright Orange,255,130,60
+madeira_1011,Madeira,1011,Dark Orange,240,100,50
+madeira_1012,Madeira,1012,Red Orange,255,69,40
+madeira_1013,Madeira,1013,Coral,255,127,80
+madeira_1014,Madeira,1014,Salmon,250,128,114
+madeira_1015,Madeira,1015,Light Salmon,255,160,122
+madeira_1016,Madeira,1016,Peach,255,218,185
+madeira_1017,Madeira,1017,Light Peach,255,228,196
+madeira_1018,Madeira,1018,Pink,255,192,203
+madeira_1019,Madeira,1019,Light Pink,255,182,193
+madeira_1020,Madeira,1020,Hot Pink,255,105,180
+madeira_1021,Madeira,1021,Deep Pink,255,20,147
+madeira_1022,Madeira,1022,Rose,220,20,60
+madeira_1023,Madeira,1023,Medium Rose,240,128,160
+madeira_1024,Madeira,1024,Dark Rose,200,80,120
+madeira_1025,Madeira,1025,Red,255,0,0
+madeira_1026,Madeira,1026,Bright Red,237,28,36
+madeira_1027,Madeira,1027,Dark Red,180,0,0
+madeira_1028,Madeira,1028,Burgundy,128,0,32
+madeira_1029,Madeira,1029,Wine,114,47,55
+madeira_1030,Madeira,1030,Maroon,128,0,0

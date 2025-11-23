@@ -1,0 +1,31 @@
+thread_id,brand,color_code,color_name,r,g,b
+anchor_1,Anchor,1,White,255,255,255
+anchor_2,Anchor,2,Snow White,254,254,254
+anchor_6,Anchor,6,Salmon Pink,230,156,150
+anchor_8,Anchor,8,Coral,233,111,97
+anchor_9,Anchor,9,Deep Coral,215,82,69
+anchor_10,Anchor,10,Peach,252,194,181
+anchor_11,Anchor,11,Light Coral,251,143,130
+anchor_13,Anchor,13,Medium Coral Red,223,69,55
+anchor_19,Anchor,19,Dark Christmas Red,167,42,42
+anchor_20,Anchor,20,Christmas Red,201,43,43
+anchor_22,Anchor,22,Scarlet,189,30,45
+anchor_23,Anchor,23,Light Shell Pink,255,214,214
+anchor_24,Anchor,24,White Lavender,255,238,244
+anchor_25,Anchor,25,Ultra Light Shell Pink,255,227,227
+anchor_26,Anchor,26,Pale Rose,255,189,202
+anchor_27,Anchor,27,Medium Light Rose,255,159,182
+anchor_28,Anchor,28,Medium Rose,242,120,153
+anchor_29,Anchor,29,Deep Rose,226,79,122
+anchor_31,Anchor,31,Ultra Dark Rose,184,44,84
+anchor_33,Anchor,33,Dark Fuchsia,184,34,99
+anchor_35,Anchor,35,Medium Fuchsia,219,85,146
+anchor_36,Anchor,36,Light Fuchsia,242,143,189
+anchor_38,Anchor,38,Dark Cyclamen,168,60,110
+anchor_39,Anchor,39,Medium Cyclamen,210,105,154
+anchor_40,Anchor,40,Light Cyclamen,232,166,202
+anchor_42,Anchor,42,Dark Peach,255,176,159
+anchor_43,Anchor,43,Medium Tangerine,255,131,101
+anchor_44,Anchor,44,Bright Orange Red,222,69,51
+anchor_45,Anchor,45,Bright Coral,255,103,91
+anchor_46,Anchor,46,Orange Red,178,47,35

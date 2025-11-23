@@ -129,6 +129,14 @@ export default function HomeScreen() {
             <Text style={styles.actionIcon}>⚙️</Text>
             <Text style={styles.actionLabel}>Ustawienia</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('Login' as never)}
+          >
+            <Text style={styles.actionIcon}>👤</Text>
+            <Text style={styles.actionLabel}>Konto</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Patterns Section */}
@@ -156,7 +164,12 @@ export default function HomeScreen() {
                 onLongPress={() => handleDeletePattern(pattern.pattern_id, pattern.name)}
               >
                 <View style={styles.patternThumbnail}>
-                  {pattern.thumbnail ? (
+                  {pattern.image_url ? (
+                    <Image
+                      source={{ uri: pattern.image_url }}
+                      style={styles.thumbnailImage}
+                    />
+                  ) : pattern.thumbnail ? (
                     <Image
                       source={{ uri: pattern.thumbnail }}
                       style={styles.thumbnailImage}

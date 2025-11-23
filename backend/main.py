@@ -3,12 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
-import os
-from dotenv import load_dotenv
-from database.threads import get_all_threads, get_thread_count
-import requests
-from io import BytesIO
-
+import io
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+import uvicorn
+from pattern_generator import generate_pattern_pdf
 load_dotenv()
 
 app = FastAPI(
@@ -234,8 +234,19 @@ async def export_pdf(pattern_id: str):
     """
     Generuje PDF wzoru (wymaga tokenów)
     """
-    # TODO: Generowanie PDF, dedukcja tokenów
-    raise HTTPException(status_code=501, detail="Not implemented yet")
+    # TODO: Pobierz pattern z bazy (na razie demo)
+    # Demo pattern (do podmiany na realne pobieranie)
+    pattern = {
+        "name": f"Wzór {pattern_id}",
+        "dimensions": {"width_stitches": 100, "height_stitches": 80},
+        "color_palette": [
+            {"rgb": [255,0,0], "thread_brand": "DMC", "thread_code": "321", "thread_name": "Red", "symbol": "A"},
+            {"rgb": [0,255,0], "thread_brand": "DMC", "thread_code": "702", "thread_name": "Green", "symbol": "B"},
+            {"rgb": [0,0,255], "thread_brand": "DMC", "thread_code": "797", "thread_name": "Blue", "symbol": "C"},
+        ],
+    }
+    pdf_bytes = generate_pattern_pdf(pattern)
+    return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=pattern_{pattern_id}.pdf"})
 
 @app.get("/api/v1/user/inventory")
 async def get_user_inventory():

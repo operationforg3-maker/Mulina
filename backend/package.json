@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "expo-file-system": "^19.0.19",
+    "expo-sharing": "^14.0.7"
+  }
+}

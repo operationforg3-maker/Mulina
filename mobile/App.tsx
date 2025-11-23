@@ -2,10 +2,12 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
+import { AuthProvider } from './src/services/authContext';
 import HomeScreen from './src/screens/HomeScreen';
 import ApiTestScreen from './src/screens/ApiTestScreen';
 import ImagePickerScreen from './src/screens/ImagePickerScreen';
 import PatternEditorScreen from './src/screens/PatternEditorScreen';
+import LoginScreen from './src/screens/LoginScreen';
 
 // Screens (TODO: Create these)
 // import ExportScreen from './src/screens/ExportScreen';
@@ -16,6 +18,7 @@ export type RootStackParamList = {
   ApiTest: undefined;
   PatternEditor: { patternId: string; pattern?: any };
   Export: { patternId: string };
+  Login: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -47,46 +50,53 @@ const styles = require('react-native').StyleSheet.create({
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <StatusBar style="auto" />
-      <Stack.Navigator
-        initialRouteName="Home"
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: '#6366f1',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }}
-      >
-        <Stack.Screen 
-          name="Home" 
-          component={HomeScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="ImagePicker" 
-          component={ImagePickerScreen}
-          options={{ title: 'Nowy wzór' }}
-        />
-        <Stack.Screen 
-          name="ApiTest" 
-          component={ApiTestScreen}
-          options={{ title: 'API Test' }}
-        />
-        <Stack.Screen 
-          name="PatternEditor" 
-          component={PatternEditorScreen}
-          options={{ title: 'Edytor wzoru' }}
-        />
-        <Stack.Screen 
-          name="Export" 
-          component={PlaceholderScreen}
-          options={{ title: 'Export Pattern' }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <AuthProvider>
+      <NavigationContainer>
+        <StatusBar style="auto" />
+        <Stack.Navigator
+          initialRouteName="Home"
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: '#6366f1',
+            },
+            headerTintColor: '#fff',
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
+          }}
+        >
+          <Stack.Screen 
+            name="Home" 
+            component={HomeScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="ImagePicker" 
+            component={ImagePickerScreen}
+            options={{ title: 'Nowy wzór' }}
+          />
+          <Stack.Screen 
+            name="ApiTest" 
+            component={ApiTestScreen}
+            options={{ title: 'API Test' }}
+          />
+          <Stack.Screen 
+            name="PatternEditor" 
+            component={PatternEditorScreen}
+            options={{ title: 'Edytor wzoru' }}
+          />
+          <Stack.Screen 
+            name="Login" 
+            component={LoginScreen}
+            options={{ title: 'Logowanie' }}
+          />
+          <Stack.Screen 
+            name="Export" 
+            component={PlaceholderScreen}
+            options={{ title: 'Export Pattern' }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </AuthProvider>
   );
 }

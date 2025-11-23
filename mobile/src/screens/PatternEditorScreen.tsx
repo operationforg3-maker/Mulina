@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { loadPattern as loadPatternFromStorage, savePattern, StoredPattern } from '../services/patternStorage';
 
 type RootStackParamList = {
   Home: undefined;
@@ -74,21 +75,18 @@ export default function PatternEditorScreen() {
 
   const loadPattern = async () => {
     try {
-      // TODO: Load from local storage first, then API if needed
-      // For now, mock data until we implement persistence
-      const response = await fetch(`http://127.0.0.1:8000/api/v1/patterns/${patternId}`);
+      const savedPattern = await loadPatternFromStorage(patternId);
       
-      if (!response.ok) {
-        throw new Error('Pattern not found');
+      if (savedPattern) {
+        setPattern(savedPattern);
+      } else {
+        throw new Error('Pattern not found in storage');
       }
-
-      const data = await response.json();
-      setPattern(data);
     } catch (error) {
       console.error('Load pattern error:', error);
       Alert.alert(
         'Błąd',
-        'Nie udało się załadować wzoru. Wzór może nie być jeszcze zapisany.',
+        'Nie udało się załadować wzoru.',
         [
           {
             text: 'Wróć',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,45 +7,68 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
+  Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { getPatternsList, deletePattern, PatternListItem } from '../services/patternStorage';
 
-interface Pattern {
-  id: string;
-  name: string;
-  thumbnail?: string;
-  createdAt: string;
-  stitchCount: number;
-  colorCount: number;
-}
+type RootStackParamList = {
+  Home: undefined;
+  ImagePicker: undefined;
+  PatternEditor: { patternId: string; pattern?: any };
+  ApiTest: undefined;
+};
+
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export default function HomeScreen() {
-  const navigation = useNavigation();
-  const [patterns, setPatterns] = useState<Pattern[]>([]);
+  const navigation = useNavigation<HomeScreenNavigationProp>();
+  const [patterns, setPatterns] = useState<PatternListItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchPatterns = async () => {
-    // TODO: Fetch from Firestore when configured
-    // For now, show example data
-    setPatterns([
-      {
-        id: '1',
-        name: 'Sample Pattern 1',
-        createdAt: new Date().toISOString(),
-        stitchCount: 5000,
-        colorCount: 15,
-      },
-    ]);
-  };
+  // Load patterns when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadPatterns();
+    }, [])
+  );
 
-  useEffect(() => {
-    fetchPatterns();
-  }, []);
+  const loadPatterns = async () => {
+    try {
+      const savedPatterns = await getPatternsList();
+      setPatterns(savedPatterns);
+    } catch (error) {
+      console.error('Error loading patterns:', error);
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchPatterns();
+    await loadPatterns();
     setRefreshing(false);
+  };
+
+  const handleDeletePattern = async (patternId: string, patternName: string) => {
+    Alert.alert(
+      'Usuń wzór',
+      `Czy na pewno chcesz usunąć "${patternName}"?`,
+      [
+        { text: 'Anuluj', style: 'cancel' },
+        {
+          text: 'Usuń',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deletePattern(patternId);
+              await loadPatterns();
+            } catch (error) {
+              Alert.alert('Błąd', 'Nie udało się usunąć wzoru');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -123,11 +146,14 @@ export default function HomeScreen() {
           ) : (
             patterns.map((pattern) => (
               <TouchableOpacity
-                key={pattern.id}
+                key={pattern.pattern_id}
                 style={styles.patternCard}
                 onPress={() => {
-                  // TODO: Navigate to pattern editor
+                  navigation.navigate('PatternEditor', {
+                    patternId: pattern.pattern_id,
+                  });
                 }}
+                onLongPress={() => handleDeletePattern(pattern.pattern_id, pattern.name)}
               >
                 <View style={styles.patternThumbnail}>
                   {pattern.thumbnail ? (
@@ -142,11 +168,24 @@ export default function HomeScreen() {
                 <View style={styles.patternInfo}>
                   <Text style={styles.patternName}>{pattern.name}</Text>
                   <Text style={styles.patternStats}>
-                    {pattern.stitchCount.toLocaleString()} ściegów • {pattern.colorCount} kolorów
+                    {pattern.width_stitches} × {pattern.height_stitches} • {pattern.color_count} kolorów
                   </Text>
                   <Text style={styles.patternDate}>
-                    {new Date(pattern.createdAt).toLocaleDateString('pl-PL')}
+                    {new Date(pattern.updated_at).toLocaleDateString('pl-PL')}
                   </Text>
+                  {pattern.progress_percent > 0 && (
+                    <View style={styles.progressContainer}>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            { width: `${pattern.progress_percent}%` },
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.progressText}>{pattern.progress_percent}%</Text>
+                    </View>
+                  )}
                 </View>
                 <Text style={styles.chevron}>›</Text>
               </TouchableOpacity>
@@ -211,10 +250,6 @@ const styles = StyleSheet.create({
   uploadSubtitle: {
     fontSize: 14,
     color: '#6b7280',
-  },
-  chevron: {
-    fontSize: 24,
-    color: '#9ca3af',
   },
   quickActions: {
     flexDirection: 'row',
@@ -320,5 +355,34 @@ const styles = StyleSheet.create({
   patternDate: {
     fontSize: 12,
     color: '#9ca3af',
+  },
+  chevron: {
+    fontSize: 24,
+    color: '#d1d5db',
+    marginLeft: 8,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
+  },
+  progressBar: {
+    flex: 1,
+    height: 6,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#6366f1',
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6366f1',
+    minWidth: 32,
   },
 });

@@ -12,6 +12,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { savePattern, StoredPattern } from '../services/patternStorage';
 
 type RootStackParamList = {
   Home: undefined;
@@ -116,14 +117,35 @@ export default function ImagePickerScreen() {
 
       const data = await response.json();
 
+      // Save pattern to local storage
+      const storedPattern: StoredPattern = {
+        pattern_id: data.pattern_id,
+        name: `Wzór ${new Date().toLocaleDateString('pl-PL')}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        grid_data: data.grid_data,
+        color_palette: data.color_palette,
+        dimensions: data.dimensions,
+        estimated_time: data.estimated_time,
+        progress: {
+          completed_stitches: Array(data.grid_data.height)
+            .fill(null)
+            .map(() => Array(data.grid_data.width).fill(false)),
+          current_color_index: 0,
+          last_worked: new Date().toISOString(),
+        },
+      };
+
+      await savePattern(storedPattern);
+
       // Navigate to PatternEditor with pattern data
       navigation.navigate('PatternEditor', { 
         patternId: data.pattern_id,
-        pattern: data // Pass full pattern data to avoid re-fetch
+        pattern: storedPattern,
       });
       
       Alert.alert(
-        '✅ Wzór wygenerowany!',
+        '✅ Wzór zapisany!',
         `${data.dimensions.width_stitches}x${data.dimensions.height_stitches} ściegów, ${data.color_palette.length} kolorów`
       );
     } catch (error) {

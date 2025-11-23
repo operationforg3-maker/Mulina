@@ -11,9 +11,18 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type RootStackParamList = {
+  Home: undefined;
+  ImagePicker: undefined;
+  PatternEditor: { patternId: string; pattern?: any };
+};
+
+type ImagePickerNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ImagePicker'>;
 
 export default function ImagePickerScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<ImagePickerNavigationProp>();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -107,21 +116,15 @@ export default function ImagePickerScreen() {
 
       const data = await response.json();
 
+      // Navigate to PatternEditor with pattern data
+      navigation.navigate('PatternEditor', { 
+        patternId: data.pattern_id,
+        pattern: data // Pass full pattern data to avoid re-fetch
+      });
+      
       Alert.alert(
         '✅ Wzór wygenerowany!',
-        `ID: ${data.pattern_id}\n` +
-          `Rozmiar: ${data.dimensions.width_stitches}x${data.dimensions.height_stitches} ściegów\n` +
-          `Kolory: ${data.color_palette.length} nici DMC\n` +
-          `Wymiary: ${data.dimensions.width_cm}x${data.dimensions.height_cm} cm`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // TODO: Navigate to PatternEditor when implemented
-              // navigation.navigate('PatternEditor', { patternId: data.pattern_id });
-            },
-          },
-        ]
+        `${data.dimensions.width_stitches}x${data.dimensions.height_stitches} ściegów, ${data.color_palette.length} kolorów`
       );
     } catch (error) {
       console.error('Conversion error:', error);

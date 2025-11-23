@@ -5,12 +5,20 @@ import { StatusBar } from 'expo-status-bar';
 import HomeScreen from './src/screens/HomeScreen';
 import ApiTestScreen from './src/screens/ApiTestScreen';
 import ImagePickerScreen from './src/screens/ImagePickerScreen';
+import PatternEditorScreen from './src/screens/PatternEditorScreen';
 
 // Screens (TODO: Create these)
-// import PatternEditorScreen from './src/screens/PatternEditorScreen';
 // import ExportScreen from './src/screens/ExportScreen';
 
-const Stack = createNativeStackNavigator();
+export type RootStackParamList = {
+  Home: undefined;
+  ImagePicker: undefined;
+  ApiTest: undefined;
+  PatternEditor: { patternId: string; pattern?: any };
+  Export: { patternId: string };
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // Placeholder screens
 const PlaceholderScreen = ({ route }: any) => {
@@ -70,8 +78,8 @@ export default function App() {
         />
         <Stack.Screen 
           name="PatternEditor" 
-          component={PlaceholderScreen}
-          options={{ title: 'Edit Pattern' }}
+          component={PatternEditorScreen}
+          options={{ title: 'Edytor wzoru' }}
         />
         <Stack.Screen 
           name="Export" 

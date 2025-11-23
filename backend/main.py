@@ -6,6 +6,8 @@ from typing import List, Optional
 import os
 from dotenv import load_dotenv
 from database.threads import get_all_threads, get_thread_count
+import requests
+from io import BytesIO
 
 load_dotenv()
 
@@ -71,8 +73,132 @@ async def convert_image(request: ConversionRequest):
     """
     Konwertuje obraz na wzór hafciarski
     """
-    # TODO: Implementacja algorytmu konwersji
-    raise HTTPException(status_code=501, detail="Not implemented yet")
+    try:
+        # Relative imports within backend module
+        import sys
+        import os
+        import numpy as np
+        from PIL import Image as PILImage
+        sys.path.insert(0, os.path.dirname(__file__))
+        
+        from image_processor.converter import ImageProcessor
+        from color_engine.delta_e import find_closest_thread, Thread
+        from database.threads import get_all_threads
+        
+        # Download image
+        response = requests.get(request.image_url, timeout=30)
+        response.raise_for_status()
+        image_data = BytesIO(response.content)
+        
+        # Get thread database
+        threads_data = get_all_threads(brand=request.thread_brand)
+        thread_database = [
+            Thread(
+                thread_id=t["thread_id"],
+                brand=t["brand"],
+                color_code=t["color_code"],
+                color_name=t.get("color_name", ""),
+                rgb=tuple(t["rgb"]),
+                lab=tuple(t.get("lab", [0, 0, 0]))  # Will be calculated if missing
+            )
+            for t in threads_data
+        ]
+        
+        # Load image with PIL
+        pil_img = PILImage.open(image_data)
+        if pil_img.mode != 'RGB':
+            pil_img = pil_img.convert('RGB')
+        
+        # Convert to numpy array for OpenCV
+        img_array = np.array(pil_img)
+        
+        # Create processor with modified approach - we'll use methods directly
+        # For now, simplified version without full ImageProcessor class
+        
+        # Resize if too large
+        max_size = 600
+        height, width = img_array.shape[:2]
+        if max(height, width) > max_size:
+            scale = max_size / max(height, width)
+            new_width = int(width * scale)
+            new_height = int(height * scale)
+            import cv2
+            img_array = cv2.resize(img_array, (new_width, new_height), interpolation=cv2.INTER_AREA)
+        
+        # Simple color quantization using k-means
+        from sklearn.cluster import KMeans
+        pixels = img_array.reshape(-1, 3)
+        kmeans = KMeans(n_clusters=min(request.max_colors, 30), random_state=42, n_init=10)
+        kmeans.fit(pixels)
+        
+        # Get dominant colors
+        colors = kmeans.cluster_centers_.astype(int)
+        labels = kmeans.labels_
+        
+        # Create grid based on labels
+        grid_height, grid_width = img_array.shape[:2]
+        grid = labels.reshape(grid_height, grid_width)
+        
+        # Map colors to threads
+        color_palette = []
+        thread_map = {}
+        
+        for idx, rgb in enumerate(colors):
+            rgb_tuple = tuple([int(x) for x in rgb])  # Convert numpy int64 to Python int
+            thread_match = find_closest_thread(
+                rgb_tuple, 
+                thread_database,
+                brand_filter=request.thread_brand
+            )
+            color_palette.append({
+                "rgb": [int(x) for x in rgb],  # Ensure standard int
+                "thread_code": thread_match["thread"].color_code,
+                "thread_brand": thread_match["thread"].brand,
+                "thread_name": thread_match["thread"].color_name,
+                "symbol": chr(65 + idx) if idx < 26 else chr(97 + idx - 26),  # A-Z, then a-z
+                "delta_e": round(float(thread_match["delta_e"]), 2)
+            })
+            thread_map[idx] = len(color_palette) - 1
+        
+        # Generate pattern based on type
+        grid_data = {
+            "grid": [[int(cell) for cell in row] for row in grid.tolist()],  # Convert all to int
+            "type": request.pattern_type,
+            "width": int(grid_width),
+            "height": int(grid_height)
+        }
+        
+        # Calculate dimensions
+        width_stitches = int(grid_width)
+        height_stitches = int(grid_height)
+        
+        # Physical dimensions (cm) based on Aida count
+        cm_per_stitch = 2.54 / request.aida_count  # Aida count = stitches per inch
+        width_cm = width_stitches * cm_per_stitch
+        height_cm = height_stitches * cm_per_stitch
+        
+        # Estimated time (rough: 1 stitch = 0.5 minute for beginners)
+        total_stitches = width_stitches * height_stitches
+        estimated_time = int(total_stitches * 0.5)
+        
+        return PatternResponse(
+            pattern_id=f"pattern_{hash(request.image_url) % 10000}",
+            status="ready",
+            grid_data=grid_data,
+            color_palette=color_palette,
+            dimensions={
+                "width_stitches": width_stitches,
+                "height_stitches": height_stitches,
+                "width_cm": round(width_cm, 1),
+                "height_cm": round(height_cm, 1)
+            },
+            estimated_time_minutes=estimated_time
+        )
+        
+    except requests.RequestException as e:
+        raise HTTPException(status_code=400, detail=f"Failed to download image: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Conversion error: {str(e)}")
 
 @app.get("/api/v1/threads", response_model=List[ThreadInfo])
 async def get_threads(brand: Optional[str] = None):

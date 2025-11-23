@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { loadPattern as loadPatternFromStorage, savePattern, StoredPattern } from '../services/patternStorage';
+import { loadPattern as loadPatternFromStorage, savePattern, StoredPattern, updatePatternProgress } from '../services/patternStorage';
+import CompanionMode from '../components/CompanionMode';
 
 type RootStackParamList = {
   Home: undefined;
@@ -66,6 +67,7 @@ export default function PatternEditorScreen() {
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [showGrid, setShowGrid] = useState(true);
   const [showSymbols, setShowSymbols] = useState(true);
+  const [companionMode, setCompanionMode] = useState(false);
 
   useEffect(() => {
     if (!initialPattern) {
@@ -155,6 +157,32 @@ export default function PatternEditorScreen() {
     const luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
     return luminance > 0.5 ? '#000' : '#fff';
   };
+
+  const handleUpdateProgress = async (
+    completedStitches: boolean[][],
+    currentColorIndex: number
+  ) => {
+    try {
+      await updatePatternProgress(patternId, completedStitches, currentColorIndex);
+      // Reload pattern to get updated data
+      const updated = await loadPatternFromStorage(patternId);
+      if (updated) {
+        setPattern(updated);
+      }
+    } catch (error) {
+      console.error('Error updating progress:', error);
+    }
+  };
+
+  if (companionMode && pattern) {
+    return (
+      <CompanionMode
+        pattern={pattern}
+        onUpdateProgress={handleUpdateProgress}
+        onClose={() => setCompanionMode(false)}
+      />
+    );
+  }
 
   const renderColorPalette = () => {
     if (!pattern) return null;
@@ -325,20 +353,18 @@ export default function PatternEditorScreen() {
       <View style={styles.bottomActions}>
         <TouchableOpacity
           style={[styles.actionButton, styles.actionButtonSecondary]}
-          onPress={() => {
-            Alert.alert('Export', 'PDF export będzie dostępny wkrótce');
-          }}
+          onPress={() => setCompanionMode(true)}
         >
-          <Text style={styles.actionButtonText}>📄 Eksportuj PDF</Text>
+          <Text style={styles.actionButtonText}>🧵 Companion Mode</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.actionButton, styles.actionButtonPrimary]}
           onPress={() => {
-            Alert.alert('Zapisano', 'Zmiany zostały zapisane lokalnie');
+            Alert.alert('Export', 'PDF export będzie dostępny wkrótce');
           }}
         >
-          <Text style={[styles.actionButtonText, { color: '#fff' }]}>💾 Zapisz</Text>
+          <Text style={[styles.actionButtonText, { color: '#fff' }]}>📄 PDF</Text>
         </TouchableOpacity>
       </View>
     </View>

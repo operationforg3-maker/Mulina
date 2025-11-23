@@ -1,0 +1,19 @@
+{
+  "name": "mulina-tests",
+  "version": "1.0.0",
+  "description": "E2E tests for Mulina embroidery app",
+  "scripts": {
+    "test:e2e:ios": "detox test --configuration ios.sim.debug",
+    "test:e2e:android": "detox test --configuration android.emu.debug",
+    "test:e2e:web": "playwright test",
+    "test:unit": "jest",
+    "test:all": "npm run test:unit && npm run test:e2e:web"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/jest": "^29.5.0",
+    "detox": "^20.0.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0"
+  }
+}

@@ -388,6 +388,34 @@ export default function PatternEditorScreen() {
 
         <TouchableOpacity
           style={styles.toolButton}
+          onPress={async () => {
+            try {
+              const DocumentPicker = (await import('expo-document-picker')).default;
+              const result = await DocumentPicker.getDocumentAsync({
+                type: 'application/json',
+                copyToCacheDirectory: true,
+              });
+
+              if (!result.canceled && result.assets && result.assets.length > 0) {
+                const { importFromJson } = await import('../services/patternExport');
+                const imported = await importFromJson(result.assets[0].uri);
+                
+                setPattern(imported);
+                await savePattern(imported);
+                Alert.alert('Sukces', 'Wzór zaimportowany');
+              }
+            } catch (err) {
+              Alert.alert('Błąd importu', 'Nie udało się zaimportować wzoru');
+            }
+          }}
+        >
+          <Text style={styles.toolButtonText}>📥</Text>
+        </TouchableOpacity>
+
+        <View style={styles.toolbarSeparator} />
+
+        <TouchableOpacity
+          style={styles.toolButton}
           onPress={() => setShowGrid(!showGrid)}
         >
           <Text style={styles.toolButtonText}>{showGrid ? '🔲' : '⬜'}</Text>
@@ -499,7 +527,7 @@ export default function PatternEditorScreen() {
           style={[styles.actionButton, styles.actionButtonSecondary]}
           onPress={() => setCompanionMode(true)}
         >
-          <Text style={styles.actionButtonText}>🧵 Companion Mode</Text>
+          <Text style={styles.actionButtonText}>🧵 Companion</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -515,6 +543,60 @@ export default function PatternEditorScreen() {
           }}
         >
           <Text style={[styles.actionButtonText, { color: '#fff' }]}>📄 PDF</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionButton, styles.actionButtonSecondary]}
+          onPress={() => {
+            Alert.alert(
+              'Eksportuj wzór',
+              'Wybierz format eksportu',
+              [
+                {
+                  text: 'JSON',
+                  onPress: async () => {
+                    if (!pattern) return;
+                    try {
+                      const { exportToJson } = await import('../services/patternExport');
+                      await exportToJson(pattern as any);
+                      Alert.alert('Sukces', 'Wzór wyeksportowany do JSON');
+                    } catch (err) {
+                      Alert.alert('Błąd', 'Nie udało się wyeksportować');
+                    }
+                  },
+                },
+                {
+                  text: 'XSD',
+                  onPress: async () => {
+                    if (!pattern) return;
+                    try {
+                      const { exportToXsd } = await import('../services/patternExport');
+                      await exportToXsd(pattern as any);
+                      Alert.alert('Sukces', 'Wzór wyeksportowany do XSD');
+                    } catch (err) {
+                      Alert.alert('Błąd', 'Nie udało się wyeksportować');
+                    }
+                  },
+                },
+                {
+                  text: 'PAT',
+                  onPress: async () => {
+                    if (!pattern) return;
+                    try {
+                      const { exportToPat } = await import('../services/patternExport');
+                      await exportToPat(pattern as any);
+                      Alert.alert('Sukces', 'Wzór wyeksportowany do PAT');
+                    } catch (err) {
+                      Alert.alert('Błąd', 'Nie udało się wyeksportować');
+                    }
+                  },
+                },
+                { text: 'Anuluj', style: 'cancel' },
+              ]
+            );
+          }}
+        >
+          <Text style={styles.actionButtonText}>💾 Eksport</Text>
         </TouchableOpacity>
       </View>
     </View>

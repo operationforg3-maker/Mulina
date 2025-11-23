@@ -51,6 +51,24 @@ npm install
 npx expo start
 ```
 
+### PWA Setup (Progressive Web App)
+```bash
+cd mobile
+
+# Build for web
+npx expo export --platform web
+
+# Serve locally for testing
+npx serve dist -p 3000
+
+# Open http://localhost:3000 in browser
+# PWA features:
+# - Offline-first caching (service worker)
+# - Install to home screen (manifest.json)
+# - Firebase Storage/Auth/Firestore fully supported
+# - Pattern editing, export (PDF, XSD, PAT, JSON)
+```
+
 ### Firebase Setup
 ```bash
 firebase login

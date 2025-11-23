@@ -1,0 +1,50 @@
+{
+  "name": "Mulina - Embroidery Companion",
+  "short_name": "Mulina",
+  "description": "Convert images into professional embroidery patterns with precise color matching",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#7C3AED",
+  "background_color": "#ffffff",
+  "lang": "pl",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["lifestyle", "utilities", "productivity"],
+  "screenshots": [
+    {
+      "src": "/splash.png",
+      "sizes": "1284x2778",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Pattern",
+      "short_name": "New",
+      "description": "Create a new embroidery pattern",
+      "url": "/ImagePicker",
+      "icons": [
+        {
+          "src": "/icon.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

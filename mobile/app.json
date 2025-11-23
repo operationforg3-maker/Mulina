@@ -36,7 +36,18 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "name": "Mulina - Embroidery Companion",
+      "shortName": "Mulina",
+      "description": "Convert images into professional embroidery patterns with precise color matching",
+      "themeColor": "#7C3AED",
+      "backgroundColor": "#ffffff",
+      "display": "standalone",
+      "orientation": "portrait",
+      "scope": "/",
+      "startUrl": "/",
+      "lang": "pl",
+      "preferRelatedApplications": false
     },
     "plugins": [
       [

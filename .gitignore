@@ -63,3 +63,6 @@ user_uploads/
 # Cloud credentials
 service-account-key.json
 gcloud-key.json
+google-services.json
+GoogleService-Info.plist
+*firebase-adminsdk*.json

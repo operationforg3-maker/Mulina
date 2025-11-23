@@ -10,7 +10,7 @@ from database.threads import get_all_threads, get_thread_count
 load_dotenv()
 
 app = FastAPI(
-    title="SmartStitch API",
+    title="Mulina API",
     description="API for converting images to embroidery patterns",
     version="1.0.0"
 )
@@ -55,7 +55,7 @@ class ThreadInfo(BaseModel):
 async def root():
     thread_count = get_thread_count()
     return {
-        "service": "SmartStitch API",
+        "service": "Mulina API",
         "status": "healthy",
         "version": "1.0.0",
         "threads_loaded": thread_count

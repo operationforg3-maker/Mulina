@@ -100,4 +100,11 @@ class ApiService {
   }
 }
 
-export default new ApiService();
+const apiService = new ApiService();
+export default apiService;
+
+// Export axios instance for direct usage
+export const api = axios.create({
+  baseURL: API_URL,
+  timeout: 10000,
+});

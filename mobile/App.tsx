@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
+import ApiTestScreen from './src/screens/ApiTestScreen';
 
 // Screens (TODO: Create these)
 // import HomeScreen from './src/screens/HomeScreen';
@@ -41,7 +42,7 @@ export default function App() {
     <NavigationContainer>
       <StatusBar style="auto" />
       <Stack.Navigator
-        initialRouteName="Home"
+        initialRouteName="ApiTest"
         screenOptions={{
           headerStyle: {
             backgroundColor: '#6366f1',
@@ -53,9 +54,14 @@ export default function App() {
         }}
       >
         <Stack.Screen 
+          name="ApiTest" 
+          component={ApiTestScreen}
+          options={{ title: 'Mulina - API Test' }}
+        />
+        <Stack.Screen 
           name="Home" 
           component={PlaceholderScreen}
-          options={{ title: 'SmartStitch' }}
+          options={{ title: 'Mulina' }}
         />
         <Stack.Screen 
           name="ImagePicker" 

@@ -1,7 +1,7 @@
-# SmartStitch - AI Agent Instructions
+# Mulina - AI Agent Instructions
 
 ## Project Overview
-SmartStitch is a mobile/web application for hand embroidery enthusiasts that converts digital images into professional embroidery patterns (cross-stitch and surface embroidery). The core value proposition is precise color matching using physical thread palettes (DMC, Anchor, Ariadna) with integrated project management tools.
+Mulina is a mobile/web application for hand embroidery enthusiasts that converts digital images into professional embroidery patterns (cross-stitch and surface embroidery). The core value proposition is precise color matching using physical thread palettes (DMC, Anchor, Ariadna) with integrated project management tools.
 
 ## Architecture & Tech Stack
 
@@ -10,7 +10,7 @@ SmartStitch is a mobile/web application for hand embroidery enthusiasts that con
 - SQLite/Realm for offline-first local data storage
 
 **Frontend:**
-- React Native or Flutter (mobile-first design)
+- React Native (Expo SDK 50) mobile-first design; Expo Web enabled
 - Offline-capable with local pattern caching
 
 **Key Architectural Decisions:**
@@ -69,16 +69,16 @@ Input (JPG/PNG/HEIC) → Pre-processing → Converter → Color Matching → Pat
 
 ### Setup & Build
 ```bash
-# Backend setup
+# Backend setup (Python/FastAPI)
 cd backend
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Frontend setup (React Native example)
+# Frontend setup (Expo React Native + Web)
 cd mobile
 npm install
-npx react-native run-ios  # or run-android
+npm start  # press i/a/w for iOS/Android/Web
 ```
 
 ### Testing Color Algorithms
@@ -138,7 +138,7 @@ python scripts/init_thread_database.py --brands DMC,Anchor,Ariadna
 - **Analytics:** Track conversion funnel: Image Upload → Pattern Generation → PDF Export → Purchase
 
 ## Key Files & Entry Points
-- `backend/main.py` - API server entry point
+- `backend/main.py` - Mulina API server entry point
 - `backend/color_engine/delta_e.py` - Color matching core algorithm
 - `mobile/src/screens/PatternEditorScreen.tsx` - Main editing interface
 - `data/threads/dmc_colors.csv` - DMC thread reference database

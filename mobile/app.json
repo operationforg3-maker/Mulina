@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "SmartStitch",
-    "slug": "smartstitch",
+    "name": "Mulina",
+    "slug": "mulina",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +16,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.smartstitch.app",
+      "bundleIdentifier": "com.mulina.app",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "SmartStitch needs access to your photos to convert them into embroidery patterns.",
         "NSCameraUsageDescription": "SmartStitch needs access to your camera to take photos for patterns."
@@ -27,7 +27,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.smartstitch.app",
+      "package": "com.mulina.app",
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",

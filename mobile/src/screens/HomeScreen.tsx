@@ -1,216 +1,80 @@
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  RefreshControl,
-  Alert,
-} from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { getPatternsList, deletePattern, PatternListItem } from '../services/patternStorage';
-
-type RootStackParamList = {
-  Home: undefined;
-  ImagePicker: undefined;
-  PatternEditor: { patternId: string; pattern?: any };
-  ApiTest: undefined;
-};
-
-type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+import { RootStackParamList } from '../../App';
 
 export default function HomeScreen() {
-  const navigation = useNavigation<HomeScreenNavigationProp>();
-  const [patterns, setPatterns] = useState<PatternListItem[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-
-  // Load patterns when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      loadPatterns();
-    }, [])
-  );
-
-  const loadPatterns = async () => {
-    try {
-      const savedPatterns = await getPatternsList();
-      setPatterns(savedPatterns);
-    } catch (error) {
-      console.error('Error loading patterns:', error);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadPatterns();
-    setRefreshing(false);
-  };
-
-  const handleDeletePattern = async (patternId: string, patternName: string) => {
-    Alert.alert(
-      'Usuń wzór',
-      `Czy na pewno chcesz usunąć "${patternName}"?`,
-      [
-        { text: 'Anuluj', style: 'cancel' },
-        {
-          text: 'Usuń',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deletePattern(patternId);
-              await loadPatterns();
-            } catch (error) {
-              Alert.alert('Błąd', 'Nie udało się usunąć wzoru');
-            }
-          },
-        },
-      ]
-    );
-  };
-
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Home'>>();
   return (
     <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+      <View style={styles.header}>
+        <Text style={styles.title}>Mulina</Text>
+        <Text style={styles.subtitle}>Konwertuj grafikę na wzór haftu</Text>
+      </View>
+      <TouchableOpacity
+        style={styles.uploadButton}
+        onPress={() => navigation.navigate('ImagePicker')}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Mulina</Text>
-          <Text style={styles.subtitle}>Hafty Cross-Stitch & Surface</Text>
-        </View>
-
-        {/* Upload Button */}
-        <TouchableOpacity
-          style={styles.uploadButton}
-          onPress={() => navigation.navigate('ImagePicker' as never)}
-        >
-          <Text style={styles.uploadIcon}>📸</Text>
-          <View style={styles.uploadTextContainer}>
-            <Text style={styles.uploadTitle}>Utwórz nowy wzór</Text>
-            <Text style={styles.uploadSubtitle}>
-              Wybierz zdjęcie z galerii lub zrób nowe
-            </Text>
-          </View>
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
-
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('ApiTest' as never)}
-          >
-            <Text style={styles.actionIcon}>🧵</Text>
-            <Text style={styles.actionLabel}>Nitki DMC</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => {
-              // TODO: Navigate to inventory
-            }}
-          >
-            <Text style={styles.actionIcon}>📦</Text>
-            <Text style={styles.actionLabel}>Moje nitki</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => {
-              // TODO: Navigate to settings
-            }}
-          >
-            <Text style={styles.actionIcon}>⚙️</Text>
-            <Text style={styles.actionLabel}>Ustawienia</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('Login' as never)}
-          >
-            <Text style={styles.actionIcon}>👤</Text>
-            <Text style={styles.actionLabel}>Konto</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Patterns Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ostatnie wzory</Text>
-
-          {patterns.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🎨</Text>
-              <Text style={styles.emptyTitle}>Brak wzorów</Text>
-              <Text style={styles.emptySubtitle}>
-                Zacznij od utworzenia pierwszego wzoru
-              </Text>
-            </View>
-          ) : (
-            patterns.map((pattern) => (
-              <TouchableOpacity
-                key={pattern.pattern_id}
-                style={styles.patternCard}
-                onPress={() => {
-                  navigation.navigate('PatternEditor', {
-                    patternId: pattern.pattern_id,
-                  });
-                }}
-                onLongPress={() => handleDeletePattern(pattern.pattern_id, pattern.name)}
-              >
-                <View style={styles.patternThumbnail}>
-                  {pattern.image_url ? (
-                    <Image
-                      source={{ uri: pattern.image_url }}
-                      style={styles.thumbnailImage}
-                    />
-                  ) : pattern.thumbnail ? (
-                    <Image
-                      source={{ uri: pattern.thumbnail }}
-                      style={styles.thumbnailImage}
-                    />
-                  ) : (
-                    <Text style={styles.thumbnailPlaceholder}>🧵</Text>
-                  )}
-                </View>
-                <View style={styles.patternInfo}>
-                  <Text style={styles.patternName}>{pattern.name}</Text>
-                  <Text style={styles.patternStats}>
-                    {pattern.width_stitches} × {pattern.height_stitches} • {pattern.color_count} kolorów
-                  </Text>
-                  <Text style={styles.patternDate}>
-                    {new Date(pattern.updated_at).toLocaleDateString('pl-PL')}
-                  </Text>
-                  {pattern.progress_percent > 0 && (
-                    <View style={styles.progressContainer}>
-                      <View style={styles.progressBar}>
-                        <View
-                          style={[
-                            styles.progressFill,
-                            { width: `${pattern.progress_percent}%` },
-                          ]}
-                        />
-                      </View>
-                      <Text style={styles.progressText}>{pattern.progress_percent}%</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.chevron}>›</Text>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
-      </ScrollView>
+        <Text style={styles.uploadTitle}>Przekonwertuj grafikę na szablon</Text>
+        <Text style={styles.uploadSubtitle}>Wybierz obraz i zobacz gotowy wzór do haftu</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  statusBanner: {
+    backgroundColor: '#22c55e',
+    padding: 8,
+    alignItems: 'center',
+  },
+  statusText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  howItWorks: {
+    backgroundColor: '#f1f5f9',
+    margin: 16,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 0,
+  },
+  howTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+    color: '#6366f1',
+  },
+  howStep: {
+    fontSize: 14,
+    color: '#334155',
+    marginBottom: 2,
+  },
+  bigAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginVertical: 6,
+    padding: 18,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    gap: 16,
+  },
+  bigActionIcon: {
+    fontSize: 32,
+    marginRight: 12,
+  },
+  bigActionLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',

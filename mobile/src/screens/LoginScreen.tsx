@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import GlobalLoader from '../components/GlobalLoader';
 import {
   View,
   Text,
@@ -58,10 +59,9 @@ export default function LoginScreen() {
           placeholder="Email"
           value={email}
           onChangeText={setEmail}
-          keyboardType="email-address"
           autoCapitalize="none"
+          keyboardType="email-address"
         />
-
         <TextInput
           style={styles.input}
           placeholder="Hasło"
@@ -69,29 +69,13 @@ export default function LoginScreen() {
           onChangeText={setPassword}
           secureTextEntry
         />
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleAuth}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>
-              {isSignUp ? 'Zarejestruj' : 'Zaloguj'}
-            </Text>
-          )}
+        <TouchableOpacity style={styles.button} onPress={handleAuth} disabled={loading}>
+          <Text style={styles.buttonText}>{isSignUp ? 'Zarejestruj się' : 'Zaloguj się'}</Text>
         </TouchableOpacity>
-
         <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
           <Text style={styles.switchText}>
             {isSignUp ? 'Masz już konto? Zaloguj się' : 'Nie masz konta? Zarejestruj się'}
           </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.skipText}>Pomiń (kontynuuj bez konta)</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

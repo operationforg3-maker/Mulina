@@ -1,0 +1,13 @@
+# Vercel configuration for Mulina Expo Web
+# https://vercel.com/docs/project-configuration
+
+builds:
+  - src: mobile/dist/**
+    use: @vercel/static
+
+outputDirectory: mobile/dist
+
+# Redirect all routes to index.html (SPA)
+rewrites:
+  - source: "/(.*)"
+    destination: "/index.html"

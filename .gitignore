@@ -70,3 +70,4 @@ gcloud-key.json
 google-services.json
 GoogleService-Info.plist
 *firebase-adminsdk*.json
+github-secrets-to-add.txt

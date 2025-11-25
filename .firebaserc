@@ -1,5 +1,16 @@
 {
   "projects": {
-    "default": "mulina-c334d"
-  }
+    "default": "mulina-c334d",
+    "staging": "mulina-c334d"
+  },
+  "targets": {
+    "mulina-c334d": {
+      "hosting": {
+        "mulina-c334d": [
+          "mobile/dist"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

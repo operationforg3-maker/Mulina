@@ -51,7 +51,6 @@ export default function ImagePickerScreen() {
     if (!hasPermission) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
@@ -98,12 +97,13 @@ export default function ImagePickerScreen() {
         imageUrl = await uploadImageToFirebase(selectedImage);
       } catch (uploadErr) {
         console.error('Upload error:', uploadErr);
-        Alert.alert('Błąd uploadu', 'Nie udało się wysłać zdjęcia do chmury.');
-        setLoading(false);
-        return;
+        // Fallback - use local URI if Firebase upload fails
+        imageUrl = selectedImage;
+        console.warn('Using local URI as fallback');
       }
 
-      const response = await fetch('http://127.0.0.1:8000/api/v1/convert', {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${apiUrl}/api/v1/convert`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -114,13 +114,15 @@ export default function ImagePickerScreen() {
           thread_brand: threadBrand,
           max_colors: maxColors,
           aida_count: aidaCount,
-          max_width: 200,
-          max_height: 200,
+          enable_dithering: false,
+          use_inventory: false,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
@@ -134,12 +136,12 @@ export default function ImagePickerScreen() {
         grid_data: data.grid_data,
         color_palette: data.color_palette,
         dimensions: data.dimensions,
-        estimated_time: data.estimated_time,
+        estimated_time: data.estimated_time_minutes || 0,
         image_url: imageUrl,
         progress: {
-          completed_stitches: Array(data.grid_data.height)
+          completed_stitches: Array(data.grid_data?.height || 0)
             .fill(null)
-            .map(() => Array(data.grid_data.width).fill(false)),
+            .map(() => Array(data.grid_data?.width || 0).fill(false)),
           current_color_index: 0,
           last_worked: new Date().toISOString(),
         },
@@ -169,8 +171,10 @@ export default function ImagePickerScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
+    <>
+      <GlobalLoader visible={loading} message="Przetwarzanie obrazu..." />
+      <ScrollView style={styles.container}>
+        <View style={styles.content}>
         {/* Image Selection */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Wybierz zdjęcie</Text>
@@ -350,8 +354,9 @@ export default function ImagePickerScreen() {
         <Text style={styles.helpText}>
           💡 Wybierz zdjęcie o wysokim kontraście dla lepszych rezultatów
         </Text>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </>
   );
 }
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import GlobalLoader from '../components/GlobalLoader';
 import {
   View,
   Text,
@@ -60,26 +61,24 @@ export default function ApiTestScreen() {
     fetchData();
   }, []);
 
+  // Global loader and error overlay
   if (loading && !refreshing) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#6366f1" />
-        <Text style={styles.loadingText}>Connecting to backend...</Text>
-      </View>
-    );
+    return <GlobalLoader visible message="Łączenie z backendem..." />;
   }
-
   if (error) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>❌ {error}</Text>
-        <Text style={styles.hintText}>
-          Make sure backend is running on http://127.0.0.1:8000
-        </Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => fetchData()}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
+      <>
+        <GlobalLoader visible={false} />
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>❌ {error}</Text>
+          <Text style={styles.hintText}>
+            Upewnij się, że backend działa na http://127.0.0.1:8000
+          </Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => fetchData()}>
+            <Text style={styles.retryButtonText}>Spróbuj ponownie</Text>
+          </TouchableOpacity>
+        </View>
+      </>
     );
   }
 

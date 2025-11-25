@@ -1,0 +1,7 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/mulina-c334d/api:latest', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/mulina-c334d/api:latest']
+images:
+  - 'gcr.io/mulina-c334d/api:latest'

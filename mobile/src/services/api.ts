@@ -49,11 +49,37 @@ class ApiService {
    * Convert image to embroidery pattern
    */
   async convertImage(request: ConversionRequest): Promise<Pattern> {
-    const response = await axios.post<Pattern>(
+    // Transform camelCase to snake_case for backend
+    const backendRequest = {
+      image_url: request.imageUrl,
+      pattern_type: request.patternType,
+      max_colors: request.maxColors,
+      aida_count: request.aidaCount,
+      enable_dithering: request.enableDithering,
+      thread_brand: request.threadBrand,
+      use_inventory: request.useInventory,
+    };
+    
+    const response = await axios.post(
       `${this.baseUrl}/api/v1/convert`,
-      request
+      backendRequest
     );
-    return response.data;
+    
+    // Transform snake_case response to camelCase
+    const data = response.data;
+    return {
+      patternId: data.pattern_id,
+      status: data.status,
+      gridData: data.grid_data,
+      colorPalette: data.color_palette,
+      dimensions: {
+        widthStitches: data.dimensions.width_stitches,
+        heightStitches: data.dimensions.height_stitches,
+        widthCm: data.dimensions.width_cm,
+        heightCm: data.dimensions.height_cm,
+      },
+      estimatedTimeMinutes: data.estimated_time_minutes,
+    };
   }
 
   /**

@@ -1,14 +1,16 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+import os
+import io
+import requests
+from io import BytesIO
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
-import io
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 import uvicorn
 from pattern_generator import generate_pattern_pdf
+from database.threads import get_all_threads, get_thread_count
+from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI(
@@ -18,9 +20,14 @@ app = FastAPI(
 )
 
 # CORS Configuration
+allowed_origins = os.getenv(
+    "CORS_ORIGINS", 
+    "http://localhost:19006,http://localhost:8081,http://localhost:3000,https://mulina-c334d.web.app,https://mulina-c334d.firebaseapp.com"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:19006").split(","),
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -205,21 +212,24 @@ async def get_threads(brand: Optional[str] = None):
     """
     Pobiera listę dostępnych nici
     """
-    threads_data = get_all_threads(brand=brand)
-    
-    # Konwersja do ThreadInfo model
-    threads = []
-    for t in threads_data:
-        threads.append(ThreadInfo(
-            thread_id=t["thread_id"],
-            brand=t["brand"],
-            color_code=t["color_code"],
-            color_name=t["color_name"],
-            rgb=t["rgb"],
-            hex_color=t["hex_color"]
-        ))
-    
-    return threads
+    try:
+        threads_data = get_all_threads(brand=brand)
+        
+        # Konwersja do ThreadInfo model
+        threads = []
+        for t in threads_data:
+            threads.append(ThreadInfo(
+                thread_id=t["thread_id"],
+                brand=t["brand"],
+                color_code=t["color_code"],
+                color_name=t["color_name"],
+                rgb=t["rgb"],
+                hex_color=t["hex_color"]
+            ))
+        
+        return threads
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load threads: {str(e)}")
 
 @app.get("/api/v1/patterns/{pattern_id}")
 async def get_pattern(pattern_id: str):

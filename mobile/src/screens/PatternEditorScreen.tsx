@@ -1,4 +1,61 @@
 import React, { useState, useEffect, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+  // Onboarding/tutorial logic
+  const TUTORIAL_STEPS = [
+    {
+      key: 'tool',
+      title: 'Wybierz narzędzie',
+      description: 'Kliknij jedno z narzędzi powyżej, aby rozpocząć edycję wzoru. Dłuższe przytrzymanie pokaże podpowiedź.'
+    },
+    {
+      key: 'palette',
+      title: 'Paleta kolorów',
+      description: 'Wybierz kolor z palety poniżej, aby rysować wybranym odcieniem nici.'
+    },
+    {
+      key: 'undo',
+      title: 'Cofnij/Zrób ponownie',
+      description: 'Użyj strzałek ↶ ↷, aby cofnąć lub powtórzyć ostatnią zmianę.'
+    },
+    {
+      key: 'save',
+      title: 'Zapis i eksport',
+      description: 'Zmiany zapisują się automatycznie. Możesz wyeksportować wzór do PDF lub innych formatów.'
+    },
+  ];
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+  useEffect(() => {
+    (async () => {
+      const seen = await AsyncStorage.getItem('patternEditorTutorialSeen');
+      if (!seen) {
+        setShowTutorial(true);
+      }
+    })();
+  }, []);
+  const handleNextTutorial = async () => {
+    if (tutorialStep < TUTORIAL_STEPS.length - 1) {
+      setTutorialStep(tutorialStep + 1);
+    } else {
+      setShowTutorial(false);
+      await AsyncStorage.setItem('patternEditorTutorialSeen', '1');
+    }
+  };
+  const renderTutorial = () => {
+    if (!showTutorial) return null;
+    const step = TUTORIAL_STEPS[tutorialStep];
+    return (
+      <View style={styles.tutorialOverlay} pointerEvents="box-none">
+        <View style={styles.tutorialBox}>
+          <Text style={styles.tutorialTitle}>{step.title}</Text>
+          <Text style={styles.tutorialDesc}>{step.description}</Text>
+          <TouchableOpacity style={styles.tutorialButton} onPress={handleNextTutorial}>
+            <Text style={styles.tutorialButtonText}>{tutorialStep < TUTORIAL_STEPS.length - 1 ? 'Dalej' : 'Zamknij'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
 import {
   View,
   Text,
@@ -176,17 +233,22 @@ export default function PatternEditorScreen() {
   const handleCellPress = (rowIndex: number, colIndex: number) => {
     if (!pattern || selectedTool === 'view') return;
     const newGrid = pattern.grid_data.grid.map(row => [...row]);
-    
+    let changed = false;
     if (selectedTool === 'pencil') {
       newGrid[rowIndex][colIndex] = selectedColorIndex;
+      changed = true;
     } else if (selectedTool === 'eraser') {
       newGrid[rowIndex][colIndex] = -1;
+      changed = true;
     } else if (selectedTool === 'fill') {
       floodFill(newGrid, rowIndex, colIndex, newGrid[rowIndex][colIndex], selectedColorIndex);
+      changed = true;
     }
-    
-    saveToHistory(newGrid);
-    setPattern({...pattern, grid_data: {...pattern.grid_data, grid: newGrid}});
+    if (changed) {
+      saveToHistory(newGrid);
+      setPattern({...pattern, grid_data: {...pattern.grid_data, grid: newGrid}});
+      Alert.alert('Zapisano', 'Zmiany zostały zapisane');
+    }
   };
 
   const floodFill = (grid: number[][], row: number, col: number, targetColor: number, replacementColor: number) => {
@@ -322,39 +384,47 @@ export default function PatternEditorScreen() {
   };
 
   const renderToolbar = () => {
+    const tooltips = {
+      view: 'Podgląd',
+      pencil: 'Rysuj',
+      eraser: 'Gumka',
+      fill: 'Wypełnij',
+      backstitch: 'Backstitch',
+    };
     return (
       <View style={styles.toolbar}>
         <TouchableOpacity
-          style={[styles.toolButton, selectedTool === 'view' && styles.toolButtonActive]}
+          style={[styles.toolButton, styles.toolButtonLarge, selectedTool === 'view' && styles.toolButtonActive]}
           onPress={() => setSelectedTool('view')}
+          onLongPress={() => Alert.alert('Podgląd', 'Tryb podglądu wzoru')}
         >
           <Text style={styles.toolButtonText}>👁️</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
-          style={[styles.toolButton, selectedTool === 'pencil' && styles.toolButtonActive]}
+          style={[styles.toolButton, styles.toolButtonLarge, selectedTool === 'pencil' && styles.toolButtonActive]}
           onPress={() => setSelectedTool('pencil')}
+          onLongPress={() => Alert.alert('Rysuj', 'Rysuj wybranym kolorem')}
         >
           <Text style={styles.toolButtonText}>✏️</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
-          style={[styles.toolButton, selectedTool === 'eraser' && styles.toolButtonActive]}
+          style={[styles.toolButton, styles.toolButtonLarge, selectedTool === 'eraser' && styles.toolButtonActive]}
           onPress={() => setSelectedTool('eraser')}
+          onLongPress={() => Alert.alert('Gumka', 'Usuń ścieg z komórki')}
         >
           <Text style={styles.toolButtonText}>🧹</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
-          style={[styles.toolButton, selectedTool === 'fill' && styles.toolButtonActive]}
+          style={[styles.toolButton, styles.toolButtonLarge, selectedTool === 'fill' && styles.toolButtonActive]}
           onPress={() => setSelectedTool('fill')}
+          onLongPress={() => Alert.alert('Wypełnij', 'Wypełnij obszar kolorem')}
         >
           <Text style={styles.toolButtonText}>🪣</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
-          style={[styles.toolButton, selectedTool === 'backstitch' && styles.toolButtonActive]}
+          style={[styles.toolButton, styles.toolButtonLarge, selectedTool === 'backstitch' && styles.toolButtonActive]}
           onPress={() => setSelectedTool('backstitch')}
+          onLongPress={() => Alert.alert('Backstitch', 'Dodaj linię konturową')}
         >
           <Text style={styles.toolButtonText}>╱</Text>
         </TouchableOpacity>
@@ -460,153 +530,94 @@ export default function PatternEditorScreen() {
     );
   }
 
-  if (!pattern) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.errorText}>Nie znaleziono wzoru</Text>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>Wróć</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      {/* Header Info + Image */}
-      <View style={styles.header}>
-        {pattern.image_url && (
-          <View style={{ alignItems: 'center', marginBottom: 12 }}>
-            <Image
-              source={{ uri: pattern.image_url }}
-              style={{ width: 180, height: 135, borderRadius: 12, resizeMode: 'cover' }}
-            />
-          </View>
-        )}
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>Wzór {pattern.pattern_id}</Text>
-          <Text style={styles.headerSubtitle}>
-            {pattern.dimensions.width_stitches} × {pattern.dimensions.height_stitches} ściegów
-            {' • '}
-            {pattern.color_palette.length} kolorów
-            {' • '}
-            {pattern.dimensions.width_cm.toFixed(1)} × {pattern.dimensions.height_cm.toFixed(1)} cm
-          </Text>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6366f1" />
+          <Text style={styles.loadingText}>Ładowanie wzoru...</Text>
         </View>
-      </View>
-
-      {/* Toolbar */}
-      {renderToolbar()}
-
-      {/* Color Palette */}
-      {renderColorPalette()}
-
-      {/* Grid ScrollView */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={true}
-        showsHorizontalScrollIndicator={true}
-        bounces={false}
-      >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={true}
-          bounces={false}
-        >
-          {renderGrid()}
-        </ScrollView>
-      </ScrollView>
-
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonSecondary]}
-          onPress={() => setCompanionMode(true)}
-        >
-          <Text style={styles.actionButtonText}>🧵 Companion</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonPrimary]}
-          onPress={async () => {
-            if (!pattern) return;
-            try {
-              const { exportPatternPdf } = await import('../services/pdfExport');
-              await exportPatternPdf(pattern.pattern_id);
-            } catch (err) {
-              Alert.alert('Błąd eksportu', 'Nie udało się pobrać PDF.');
-            }
-          }}
-        >
-          <Text style={[styles.actionButtonText, { color: '#fff' }]}>📄 PDF</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonSecondary]}
-          onPress={() => {
-            Alert.alert(
-              'Eksportuj wzór',
-              'Wybierz format eksportu',
-              [
-                {
-                  text: 'JSON',
-                  onPress: async () => {
-                    if (!pattern) return;
-                    try {
-                      const { exportToJson } = await import('../services/patternExport');
-                      await exportToJson(pattern as any);
-                      Alert.alert('Sukces', 'Wzór wyeksportowany do JSON');
-                    } catch (err) {
-                      Alert.alert('Błąd', 'Nie udało się wyeksportować');
-                    }
-                  },
-                },
-                {
-                  text: 'XSD',
-                  onPress: async () => {
-                    if (!pattern) return;
-                    try {
-                      const { exportToXsd } = await import('../services/patternExport');
-                      await exportToXsd(pattern as any);
-                      Alert.alert('Sukces', 'Wzór wyeksportowany do XSD');
-                    } catch (err) {
-                      Alert.alert('Błąd', 'Nie udało się wyeksportować');
-                    }
-                  },
-                },
-                {
-                  text: 'PAT',
-                  onPress: async () => {
-                    if (!pattern) return;
-                    try {
-                      const { exportToPat } = await import('../services/patternExport');
-                      await exportToPat(pattern as any);
-                      Alert.alert('Sukces', 'Wzór wyeksportowany do PAT');
-                    } catch (err) {
-                      Alert.alert('Błąd', 'Nie udało się wyeksportować');
-                    }
-                  },
-                },
-                { text: 'Anuluj', style: 'cancel' },
-              ]
-            );
-          }}
-        >
-          <Text style={styles.actionButtonText}>💾 Eksport</Text>
-        </TouchableOpacity>
-      </View>
+      ) : pattern ? (
+        <>
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <Text style={styles.backButtonText}>←</Text>
+            </TouchableOpacity>
+            <View style={styles.headerInfo}>
+              <Text style={styles.headerTitle}>{pattern.name}</Text>
+              <Text style={styles.headerSubtitle}>
+                {pattern.dimensions.width_stitches} x {pattern.dimensions.height_stitches} ściegów
+              </Text>
+            </View>
+          </View>
+          {renderToolbar()}
+          <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+            {renderGrid()}
+          </ScrollView>
+          {/* Paleta zawsze widoczna pod gridem */}
+          {renderColorPalette()}
+          {renderTutorial()}
+        </>
+      ) : (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.errorText}>Nie znaleziono wzoru.</Text>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+    tutorialOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 100,
+    },
+    tutorialBox: {
+      backgroundColor: '#fff',
+      borderRadius: 16,
+      padding: 28,
+      maxWidth: 320,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    tutorialTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: '#6366f1',
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    tutorialDesc: {
+      fontSize: 15,
+      color: '#222',
+      marginBottom: 18,
+      textAlign: 'center',
+    },
+    tutorialButton: {
+      backgroundColor: '#6366f1',
+      borderRadius: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 28,
+    },
+    tutorialButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  toolButtonLarge: {
+    minWidth: 56,
+    minHeight: 56,
+    padding: 12,
   },
   loadingContainer: {
     flex: 1,
@@ -627,156 +638,6 @@ const styles = StyleSheet.create({
   backButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: '#6366f1',
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  header: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerInfo: {
-    gap: 4,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  toolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    gap: 8,
-  },
-  toolButton: {
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: '#f3f4f6',
-    minWidth: 40,
-    alignItems: 'center',
-  },
-  toolButtonActive: {
-    backgroundColor: '#6366f1',
-  },
-  toolButtonText: {
-    fontSize: 16,
-  },
-  toolbarSeparator: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#e5e7eb',
-    marginHorizontal: 4,
-  },
-  zoomText: {
-    fontSize: 12,
-    color: '#6b7280',
-    minWidth: 40,
-    textAlign: 'center',
-  },
-  paletteContainer: {
-    backgroundColor: '#fff',
-    maxHeight: 100,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  paletteContent: {
-    padding: 12,
-    gap: 8,
-  },
-  paletteItem: {
-    alignItems: 'center',
-    gap: 4,
-    padding: 4,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  paletteItemSelected: {
-    borderColor: '#6366f1',
-    backgroundColor: '#eef2ff',
-  },
-  paletteColor: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  paletteSymbol: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  paletteCode: {
-    fontSize: 10,
-    color: '#6b7280',
-    maxWidth: 60,
-    textAlign: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-  },
-  gridContainer: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  gridRow: {
-    flexDirection: 'row',
-  },
-  gridCell: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderColor: '#e5e7eb',
-  },
-  symbolText: {
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  bottomActions: {
-    flexDirection: 'row',
-    gap: 12,
-    padding: 16,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  actionButtonPrimary: {
-    backgroundColor: '#6366f1',
-  },
-  actionButtonSecondary: {
-    backgroundColor: '#f3f4f6',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
   },
 });
+

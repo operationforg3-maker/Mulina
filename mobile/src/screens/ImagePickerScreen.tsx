@@ -52,6 +52,39 @@ const PRESET_IMAGES = [
   },
 ];
 
+export interface CanvasFormatItem {
+  id: string;
+  category: 'frame' | 'hoop';
+  name: string;
+  desc: string;
+  widthCm: number;
+  heightCm: number;
+  icon: string;
+  isRound?: boolean;
+}
+
+export const CANVAS_FORMATS: CanvasFormatItem[] = [
+  // Ramki i standardowe formaty
+  { id: 'frame_10_15', category: 'frame', name: '10 × 15 cm', desc: 'Klasyczna mała ramka foto', widthCm: 10, heightCm: 15, icon: '🖼️' },
+  { id: 'frame_13_18', category: 'frame', name: '13 × 18 cm', desc: 'Popularna ramka średnia', widthCm: 13, heightCm: 18, icon: '🖼️' },
+  { id: 'frame_15_20', category: 'frame', name: '15 × 20 cm', desc: 'Duża ramka stojąca', widthCm: 15, heightCm: 20, icon: '🖼️' },
+  { id: 'frame_18_24', category: 'frame', name: '18 × 24 cm', desc: 'Średnia ramka ścienna', widthCm: 18, heightCm: 24, icon: '🖼️' },
+  { id: 'frame_20_25', category: 'frame', name: '20 × 25 cm', desc: 'Portret lub kwadrat', widthCm: 20, heightCm: 25, icon: '🖼️' },
+  { id: 'frame_21_30', category: 'frame', name: '21 × 30 cm (A4)', desc: 'Standardowy arkusz A4', widthCm: 21, heightCm: 29.7, icon: '📄' },
+  { id: 'frame_30_40', category: 'frame', name: '30 × 40 cm', desc: 'Ścienny obraz dekoracyjny', widthCm: 30, heightCm: 40, icon: '🖼️' },
+  { id: 'frame_40_50', category: 'frame', name: '40 × 50 cm', desc: 'Duży motyw wystawowy', widthCm: 40, heightCm: 50, icon: '🖼️' },
+  { id: 'frame_50_70', category: 'frame', name: '50 × 70 cm', desc: 'Wielka reprodukcja / plakat', widthCm: 50, heightCm: 70, icon: '🏛️' },
+
+  // Tamborki okrągłe
+  { id: 'hoop_10', category: 'hoop', name: 'Tamborek 10 cm (4")', desc: 'Mini zawieszka / brelok', widthCm: 9, heightCm: 9, isRound: true, icon: '⭕' },
+  { id: 'hoop_13', category: 'hoop', name: 'Tamborek 13 cm (5")', desc: 'Mały tamborek ozdobny', widthCm: 12, heightCm: 12, isRound: true, icon: '⭕' },
+  { id: 'hoop_16', category: 'hoop', name: 'Tamborek 16 cm (6.5")', desc: 'Najpopularniejszy standard', widthCm: 15, heightCm: 15, isRound: true, icon: '⭕' },
+  { id: 'hoop_18', category: 'hoop', name: 'Tamborek 18 cm (7")', desc: 'Średni tamborek bambusowy', widthCm: 17, heightCm: 17, isRound: true, icon: '⭕' },
+  { id: 'hoop_20', category: 'hoop', name: 'Tamborek 20 cm (8")', desc: 'Duży motyw tamborkowy', widthCm: 19, heightCm: 19, isRound: true, icon: '⭕' },
+  { id: 'hoop_25', category: 'hoop', name: 'Tamborek 25 cm (10")', desc: 'Bardzo duża kompozycja', widthCm: 24, heightCm: 24, isRound: true, icon: '⭕' },
+  { id: 'hoop_30', category: 'hoop', name: 'Tamborek 30 cm (12")', desc: 'Maksymalny tamborek', widthCm: 28, heightCm: 28, isRound: true, icon: '⭕' },
+];
+
 export default function ImagePickerScreen() {
   const navigation = useNavigation<ImagePickerNavigationProp>();
   const { isTabletOrLarger } = useResponsive();
@@ -61,9 +94,25 @@ export default function ImagePickerScreen() {
   const [loading, setLoading] = useState(false);
 
   // 1. Sizing Mode & Dimensions
-  const [sizeMode, setSizeMode] = useState<'cm' | 'stitches'>('cm');
+  const [sizeMode, setSizeMode] = useState<'formats' | 'cm' | 'stitches'>('formats');
+  const [formatCategory, setFormatCategory] = useState<'all' | 'frame' | 'hoop'>('all');
+  const [selectedFormatId, setSelectedFormatId] = useState<string>('frame_13_18');
+
+  // Custom Dimensions in CM
+  const [customWidthCmInput, setCustomWidthCmInput] = useState<string>('15');
+  const [customHeightCmInput, setCustomHeightCmInput] = useState<string>('20');
+  const [lockAspect, setLockAspect] = useState<boolean>(true);
+
+  // Custom Dimensions in Stitches
+  const [customWidthStitchesInput, setCustomWidthStitchesInput] = useState<string>('80');
+  const [customHeightStitchesInput, setCustomHeightStitchesInput] = useState<string>('100');
+
+  // Fast Presets
   const [targetWidthCm, setTargetWidthCm] = useState<number>(15);
-  const [targetStitches, setTargetStitches] = useState<number>(75);
+  const [targetStitches, setTargetStitches] = useState<number>(80);
+
+  // Uploaded Image aspect ratio
+  const [customImageAspect, setCustomImageAspect] = useState<number>(1.0);
 
   // 2. Fabric / Canvas Options (Aida, Evenweave, Linen, Plastic, Custom)
   const [fabricType, setFabricType] = useState<'aida' | 'evenweave' | 'linen' | 'plastic' | 'custom'>('aida');
@@ -95,16 +144,40 @@ export default function ImagePickerScreen() {
   let estHeightCm = '0';
 
   const currentPreset = PRESET_IMAGES.find((p) => p.url === selectedImage);
-  const aspect = currentPreset ? currentPreset.aspect : 1.0;
+  const aspect = currentPreset ? currentPreset.aspect : customImageAspect;
 
-  if (sizeMode === 'cm') {
-    estWidthCm = targetWidthCm.toFixed(1);
-    estHeightCm = (targetWidthCm * aspect).toFixed(1);
-    estWidthStitches = Math.round(targetWidthCm * stitchesPerCm);
-    estHeightStitches = Math.round(targetWidthCm * aspect * stitchesPerCm);
+  if (sizeMode === 'formats') {
+    const chosenFormat = CANVAS_FORMATS.find((f) => f.id === selectedFormatId) || CANVAS_FORMATS[1];
+    const formatAspect = chosenFormat.heightCm / chosenFormat.widthCm;
+    let finalWidthCm = chosenFormat.widthCm;
+    let finalHeightCm = chosenFormat.heightCm;
+
+    // Fit image nicely into format boundary preserving aspect ratio
+    if (aspect > formatAspect) {
+      finalHeightCm = chosenFormat.heightCm;
+      finalWidthCm = chosenFormat.heightCm / aspect;
+    } else {
+      finalWidthCm = chosenFormat.widthCm;
+      finalHeightCm = chosenFormat.widthCm * aspect;
+    }
+
+    estWidthCm = finalWidthCm.toFixed(1);
+    estHeightCm = finalHeightCm.toFixed(1);
+    estWidthStitches = Math.max(10, Math.round(finalWidthCm * stitchesPerCm));
+    estHeightStitches = Math.max(10, Math.round(finalHeightCm * stitchesPerCm));
+  } else if (sizeMode === 'cm') {
+    const w = parseFloat(customWidthCmInput) || targetWidthCm || 15;
+    const h = lockAspect ? w * aspect : (parseFloat(customHeightCmInput) || w * aspect);
+    estWidthCm = w.toFixed(1);
+    estHeightCm = h.toFixed(1);
+    estWidthStitches = Math.max(10, Math.round(w * stitchesPerCm));
+    estHeightStitches = Math.max(10, Math.round(h * stitchesPerCm));
   } else {
-    estWidthStitches = targetStitches;
-    estHeightStitches = Math.round(targetStitches * aspect);
+    // stitches mode
+    const wStitches = parseInt(customWidthStitchesInput, 10) || targetStitches || 80;
+    const hStitches = lockAspect ? Math.round(wStitches * aspect) : (parseInt(customHeightStitchesInput, 10) || Math.round(wStitches * aspect));
+    estWidthStitches = Math.max(10, wStitches);
+    estHeightStitches = Math.max(10, hStitches);
     estWidthCm = (estWidthStitches / stitchesPerCm).toFixed(1);
     estHeightCm = (estHeightStitches / stitchesPerCm).toFixed(1);
   }
@@ -174,14 +247,21 @@ export default function ImagePickerScreen() {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsEditing: false,
         quality: 0.8,
         base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
         const asset = result.assets[0];
+        if (asset.width && asset.height) {
+          const ratio = asset.height / asset.width;
+          setCustomImageAspect(ratio);
+          const currentW = parseFloat(customWidthCmInput) || 15;
+          setCustomHeightCmInput((currentW * ratio).toFixed(1));
+          const currentWStitches = parseInt(customWidthStitchesInput, 10) || 80;
+          setCustomHeightStitchesInput(Math.round(currentWStitches * ratio).toString());
+        }
         if (asset.base64) {
           const mime = asset.uri.endsWith('.png') ? 'image/png' : 'image/jpeg';
           setSelectedImage(`data:${mime};base64,${asset.base64}`);
@@ -599,17 +679,29 @@ export default function ImagePickerScreen() {
         </View>
       </View>
 
-      {/* Section 3: Sizing Mode */}
+      {/* Section 3: Sizing & Canvas Formats */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📐 3. Dobór rozmiaru haftu</Text>
+        <Text style={styles.sectionTitle}>📐 3. Dobór rozmiaru haftu i formatu płótna</Text>
+        <Text style={styles.helperText}>
+          Wybierz gotową ramkę/tamborek lub zdefiniuj dowolny własny rozmiar haftu:
+        </Text>
 
+        {/* 3 Main Tabs */}
         <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, sizeMode === 'formats' && styles.tabActive]}
+            onPress={() => setSizeMode('formats')}
+          >
+            <Text style={[styles.tabText, sizeMode === 'formats' && styles.tabTextActive]}>
+              🖼️ Formaty i tamborki
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, sizeMode === 'cm' && styles.tabActive]}
             onPress={() => setSizeMode('cm')}
           >
             <Text style={[styles.tabText, sizeMode === 'cm' && styles.tabTextActive]}>
-              📏 W centymetrach (cm)
+              📏 Dowolne cm
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -617,66 +709,331 @@ export default function ImagePickerScreen() {
             onPress={() => setSizeMode('stitches')}
           >
             <Text style={[styles.tabText, sizeMode === 'stitches' && styles.tabTextActive]}>
-              🔢 W liczbie ściegów
+              🔢 Liczba ściegów
             </Text>
           </TouchableOpacity>
         </View>
 
-        {sizeMode === 'cm' ? (
+        {/* Mode 1: Ready Formats & Hoops */}
+        {sizeMode === 'formats' && (
           <View style={styles.modeContent}>
-            <Text style={styles.helperText}>
-              Wskaż pożądaną szerokość gotowego haftu na kanwie {aidaCount} ct:
-            </Text>
-            <View style={styles.buttonRow}>
+            {/* Filter pills: All / Frames / Hoops */}
+            <View style={styles.formatFilterRow}>
               {[
-                { label: '10 cm', val: 10 },
-                { label: '15 cm', val: 15 },
-                { label: '20 cm', val: 20 },
-                { label: '25 cm', val: 25 },
-              ].map((item) => (
+                { id: 'all', label: 'Wszystkie formaty' },
+                { id: 'frame', label: '🖼️ Ramki foto' },
+                { id: 'hoop', label: '⭕ Tamborki' },
+              ].map((cat) => (
                 <TouchableOpacity
-                  key={item.val}
+                  key={cat.id}
                   style={[
-                    styles.smallOptionButton,
-                    targetWidthCm === item.val && styles.optionButtonActive,
+                    styles.formatFilterChip,
+                    formatCategory === cat.id && styles.formatFilterChipActive,
                   ]}
-                  onPress={() => setTargetWidthCm(item.val)}
+                  onPress={() => setFormatCategory(cat.id as any)}
                 >
-                  <Text style={[styles.optionButtonText, targetWidthCm === item.val && styles.optionButtonTextActive]}>
-                    {item.label}
+                  <Text
+                    style={[
+                      styles.formatFilterChipText,
+                      formatCategory === cat.id && styles.formatFilterChipTextActive,
+                    ]}
+                  >
+                    {cat.label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Grid of formats */}
+            <View style={styles.formatsList}>
+              {CANVAS_FORMATS.filter(
+                (f) => formatCategory === 'all' || f.category === formatCategory
+              ).map((fmt) => {
+                const isSelected = selectedFormatId === fmt.id;
+                const approxStitchesW = Math.round(fmt.widthCm * stitchesPerCm);
+                const approxStitchesH = Math.round(fmt.heightCm * stitchesPerCm);
+
+                return (
+                  <TouchableOpacity
+                    key={fmt.id}
+                    style={[
+                      styles.formatCard,
+                      isSelected && {
+                        borderColor: theme.primary,
+                        backgroundColor: theme.backgroundAlt,
+                      },
+                    ]}
+                    onPress={() => {
+                      setSelectedFormatId(fmt.id);
+                      setCustomWidthCmInput(fmt.widthCm.toString());
+                      setCustomHeightCmInput(fmt.heightCm.toString());
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.formatCardTop}>
+                      <Text style={{ fontSize: 18, marginRight: 8 }}>{fmt.icon}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[
+                            styles.formatCardTitle,
+                            isSelected && { color: theme.primary, fontWeight: '800' },
+                          ]}
+                        >
+                          {fmt.name}
+                        </Text>
+                        <Text style={styles.formatCardDesc}>{fmt.desc}</Text>
+                      </View>
+                      {isSelected && (
+                        <View style={[styles.formatCheckmark, { backgroundColor: theme.primary }]}>
+                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '900' }}>✓</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.formatCardFooter}>
+                      <Text style={[styles.formatCardFooterText, { color: theme.textMuted }]}>
+                        📐 Na kanwie {effectiveCount} ct: ok. {approxStitchesW} × {approxStitchesH} krz.
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
-        ) : (
+        )}
+
+        {/* Mode 2: Custom Centimeters */}
+        {sizeMode === 'cm' && (
           <View style={styles.modeContent}>
-            <Text style={styles.helperText}>
-              Wybierz dokładną liczbę ściegów na dłuższym boku wzoru:
-            </Text>
+            {/* Quick presets */}
+            <Text style={styles.subRowLabel}>Szybki wybór szerokości (cm):</Text>
+            <View style={styles.buttonRow}>
+              {[10, 15, 20, 25, 30, 40].map((val) => (
+                <TouchableOpacity
+                  key={val}
+                  style={[
+                    styles.smallOptionButton,
+                    parseFloat(customWidthCmInput) === val && styles.optionButtonActive,
+                  ]}
+                  onPress={() => {
+                    setTargetWidthCm(val);
+                    setCustomWidthCmInput(val.toString());
+                    if (lockAspect) {
+                      setCustomHeightCmInput((val * aspect).toFixed(1));
+                    }
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.optionButtonText,
+                      parseFloat(customWidthCmInput) === val && styles.optionButtonTextActive,
+                    ]}
+                  >
+                    {val} cm
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Custom Input Box */}
+            <View style={[styles.customDimensionBox, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}>
+              <Text style={[styles.customDimensionHeader, { color: theme.textPrimary }]}>
+                Wpisz dowolny własny rozmiar haftu:
+              </Text>
+
+              <View style={styles.dimensionInputsRow}>
+                {/* Width */}
+                <View style={styles.dimensionInputGroup}>
+                  <Text style={[styles.dimInputLabel, { color: theme.textSecondary }]}>Szerokość</Text>
+                  <View style={[styles.dimInputWrapper, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+                    <TextInput
+                      style={[styles.dimTextInput, { color: theme.textPrimary }]}
+                      keyboardType="numeric"
+                      value={customWidthCmInput}
+                      onChangeText={(val) => {
+                        setCustomWidthCmInput(val);
+                        const num = parseFloat(val);
+                        if (!isNaN(num) && num > 0) {
+                          setTargetWidthCm(num);
+                          if (lockAspect) {
+                            setCustomHeightCmInput((num * aspect).toFixed(1));
+                          }
+                        }
+                      }}
+                    />
+                    <Text style={[styles.dimUnit, { color: theme.textMuted }]}>cm</Text>
+                  </View>
+                </View>
+
+                {/* Lock Aspect Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.aspectLockBtn,
+                    lockAspect && { backgroundColor: theme.primary, borderColor: theme.primary },
+                  ]}
+                  onPress={() => setLockAspect(!lockAspect)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ fontSize: 16 }}>{lockAspect ? '🔗' : '🔓'}</Text>
+                  <Text style={[styles.aspectLockText, lockAspect && { color: '#ffffff' }]}>
+                    {lockAspect ? 'Proporcje' : 'Swobodny'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Height */}
+                <View style={styles.dimensionInputGroup}>
+                  <Text style={[styles.dimInputLabel, { color: theme.textSecondary }]}>Wysokość</Text>
+                  <View style={[styles.dimInputWrapper, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+                    <TextInput
+                      style={[styles.dimTextInput, { color: theme.textPrimary }]}
+                      keyboardType="numeric"
+                      value={customHeightCmInput}
+                      editable={!lockAspect}
+                      onChangeText={(val) => {
+                        setCustomHeightCmInput(val);
+                        const num = parseFloat(val);
+                        if (!isNaN(num) && num > 0 && !lockAspect) {
+                          // Free aspect
+                        }
+                      }}
+                    />
+                    <Text style={[styles.dimUnit, { color: theme.textMuted }]}>cm</Text>
+                  </View>
+                </View>
+              </View>
+
+              <Text style={[styles.dimensionLiveInfo, { color: theme.primary }]}>
+                🔢 Odpowiada to dokładnie: {estWidthStitches} × {estHeightStitches} krzyżyków na kanwie {effectiveCount} ct
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Mode 3: Custom Stitches */}
+        {sizeMode === 'stitches' && (
+          <View style={styles.modeContent}>
+            {/* Quick presets */}
+            <Text style={styles.subRowLabel}>Szybki wybór liczby ściegów:</Text>
             <View style={styles.buttonRow}>
               {[
                 { label: '⚡ Mini (45x)', val: 45 },
                 { label: '🧵 Mały (60x)', val: 60 },
-                { label: '🧵 Standard (75x)', val: 75 },
-                { label: 'Duży (100x)', val: 100 },
+                { label: '🧵 Standard (80x)', val: 80 },
+                { label: 'Duży (120x)', val: 120 },
+                { label: 'Szczegółowy (160x)', val: 160 },
+                { label: 'Master (220x)', val: 220 },
               ].map((s) => (
                 <TouchableOpacity
                   key={s.val}
                   style={[
                     styles.smallOptionButton,
-                    targetStitches === s.val && styles.optionButtonActive,
+                    parseInt(customWidthStitchesInput, 10) === s.val && styles.optionButtonActive,
                   ]}
-                  onPress={() => setTargetStitches(s.val)}
+                  onPress={() => {
+                    setTargetStitches(s.val);
+                    setCustomWidthStitchesInput(s.val.toString());
+                    if (lockAspect) {
+                      setCustomHeightStitchesInput(Math.round(s.val * aspect).toString());
+                    }
+                  }}
                 >
-                  <Text style={[styles.optionButtonText, targetStitches === s.val && styles.optionButtonTextActive]}>
+                  <Text
+                    style={[
+                      styles.optionButtonText,
+                      parseInt(customWidthStitchesInput, 10) === s.val && styles.optionButtonTextActive,
+                    ]}
+                  >
                     {s.label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Custom Stitches Input Box */}
+            <View style={[styles.customDimensionBox, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}>
+              <Text style={[styles.customDimensionHeader, { color: theme.textPrimary }]}>
+                Wpisz dokładną siatkę krzyżyków:
+              </Text>
+
+              <View style={styles.dimensionInputsRow}>
+                {/* Width stitches */}
+                <View style={styles.dimensionInputGroup}>
+                  <Text style={[styles.dimInputLabel, { color: theme.textSecondary }]}>Szerokość</Text>
+                  <View style={[styles.dimInputWrapper, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+                    <TextInput
+                      style={[styles.dimTextInput, { color: theme.textPrimary }]}
+                      keyboardType="numeric"
+                      value={customWidthStitchesInput}
+                      onChangeText={(val) => {
+                        setCustomWidthStitchesInput(val);
+                        const num = parseInt(val, 10);
+                        if (!isNaN(num) && num > 0) {
+                          setTargetStitches(num);
+                          if (lockAspect) {
+                            setCustomHeightStitchesInput(Math.round(num * aspect).toString());
+                          }
+                        }
+                      }}
+                    />
+                    <Text style={[styles.dimUnit, { color: theme.textMuted }]}>krz.</Text>
+                  </View>
+                </View>
+
+                {/* Lock Aspect Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.aspectLockBtn,
+                    lockAspect && { backgroundColor: theme.primary, borderColor: theme.primary },
+                  ]}
+                  onPress={() => setLockAspect(!lockAspect)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ fontSize: 16 }}>{lockAspect ? '🔗' : '🔓'}</Text>
+                  <Text style={[styles.aspectLockText, lockAspect && { color: '#ffffff' }]}>
+                    {lockAspect ? 'Proporcje' : 'Swobodny'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Height stitches */}
+                <View style={styles.dimensionInputGroup}>
+                  <Text style={[styles.dimInputLabel, { color: theme.textSecondary }]}>Wysokość</Text>
+                  <View style={[styles.dimInputWrapper, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+                    <TextInput
+                      style={[styles.dimTextInput, { color: theme.textPrimary }]}
+                      keyboardType="numeric"
+                      value={customHeightStitchesInput}
+                      editable={!lockAspect}
+                      onChangeText={(val) => {
+                        setCustomHeightStitchesInput(val);
+                        const num = parseInt(val, 10);
+                        if (!isNaN(num) && num > 0 && !lockAspect) {
+                          // Free aspect
+                        }
+                      }}
+                    />
+                    <Text style={[styles.dimUnit, { color: theme.textMuted }]}>krz.</Text>
+                  </View>
+                </View>
+              </View>
+
+              <Text style={[styles.dimensionLiveInfo, { color: theme.primary }]}>
+                📏 Odpowiada to fizycznemu wymiarowi: {estWidthCm} × {estHeightCm} cm na kanwie {effectiveCount} ct
+              </Text>
+            </View>
           </View>
         )}
+
+        {/* Selected Canvas & Cutting Summary Banner */}
+        <View style={[styles.sizeSummaryBanner, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}>
+          <Text style={{ fontSize: 18, marginRight: 10 }}>🎯</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.sizeSummaryMain, { color: theme.textPrimary }]}>
+              Haft: <Text style={{ fontWeight: '800', color: theme.primary }}>{estWidthCm} × {estHeightCm} cm</Text> ({estWidthStitches} × {estHeightStitches} krz.)
+            </Text>
+            <Text style={[styles.sizeSummarySub, { color: theme.textSecondary }]}>
+              ✂️ Wytnij płótno: <Text style={{ fontWeight: '700', color: theme.textPrimary }}>{cutWidthCm} × {cutHeightCm} cm</Text> (zapas +{marginCm} cm z każdej strony)
+            </Text>
+          </View>
+        </View>
       </View>
 
       {/* Section 4: Thread Brand & Colors */}
@@ -1326,5 +1683,155 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '700',
+  },
+  formatFilterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+    flexWrap: 'wrap',
+  },
+  formatFilterChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: colors.backgroundAlt,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+  },
+  formatFilterChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  formatFilterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  formatFilterChipTextActive: {
+    color: '#ffffff',
+    fontWeight: '800',
+  },
+  formatsList: {
+    gap: 8,
+    marginBottom: 14,
+  },
+  formatCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: colors.surfaceBorder,
+    ...shadows.card,
+  },
+  formatCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  formatCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  formatCardDesc: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+  formatCheckmark: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  formatCardFooter: {
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceBorder,
+  },
+  formatCardFooterText: {
+    fontSize: 11,
+  },
+  customDimensionBox: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  customDimensionHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  dimensionInputsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dimensionInputGroup: {
+    flex: 1,
+  },
+  dimInputLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  dimInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    height: 42,
+  },
+  dimTextInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  dimUnit: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  aspectLockBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.surfaceBorder,
+    marginTop: 16,
+    minWidth: 54,
+  },
+  aspectLockText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  dimensionLiveInfo: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 10,
+  },
+  sizeSummaryBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  sizeSummaryMain: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  sizeSummarySub: {
+    fontSize: 11,
+    marginTop: 2,
   },
 });

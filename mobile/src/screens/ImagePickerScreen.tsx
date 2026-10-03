@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   Platform,
+  TextInput,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -15,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { savePattern, StoredPattern } from '../services/patternStorage';
 import { parsePatternFile } from '../services/parsers/patternParsers';
+import { convertImageClient } from '../services/clientPatternConverter';
 import { DEMO_PATTERN } from '../services/demoPattern';
 import GlobalLoader from '../components/GlobalLoader';
 import { colors, shadows } from '../theme/colors';
@@ -63,8 +65,12 @@ export default function ImagePickerScreen() {
   const [targetWidthCm, setTargetWidthCm] = useState<number>(15);
   const [targetStitches, setTargetStitches] = useState<number>(75);
 
-  // 2. Fabric / Canvas Options (Aida 11-18ct and Evenweave 28-32ct)
-  const [aidaCount, setAidaCount] = useState<11 | 14 | 16 | 18 | 28 | 32>(14);
+  // 2. Fabric / Canvas Options (Aida, Evenweave, Linen, Plastic, Custom)
+  const [fabricType, setFabricType] = useState<'aida' | 'evenweave' | 'linen' | 'plastic' | 'custom'>('aida');
+  const [aidaCount, setAidaCount] = useState<number>(14);
+  const [isCustomCount, setIsCustomCount] = useState<boolean>(false);
+  const [customCountInput, setCustomCountInput] = useState<string>('14');
+  const [overTwoThreads, setOverTwoThreads] = useState<boolean>(false);
   const [canvasColor, setCanvasColor] = useState<'white' | 'cream' | 'black' | 'linen'>('white');
   const [marginCm, setMarginCm] = useState<number>(5);
 
@@ -77,8 +83,9 @@ export default function ImagePickerScreen() {
   const [brightness, setBrightness] = useState<number>(1.0);
   const [contrast, setContrast] = useState<number>(1.0);
 
-  // Helper: Stitches per cm based on Aida / Evenweave count (for 28/32ct worked over 2 threads: 14/16ct effective)
-  const effectiveCount = aidaCount === 28 ? 14 : aidaCount === 32 ? 16 : aidaCount;
+  // Helper: Stitches per cm based on Fabric type and count
+  const isOverTwo = fabricType === 'evenweave' || fabricType === 'linen' || (isCustomCount && overTwoThreads);
+  const effectiveCount = isOverTwo ? aidaCount / 2 : aidaCount;
   const stitchesPerCm = effectiveCount / 2.54;
 
   // Real-time calculation of dimensions
@@ -197,126 +204,46 @@ export default function ImagePickerScreen() {
     setLoading(true);
 
     try {
-      const backendUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
-      const endpointsToTry = [
-        backendUrl,
-        'http://127.0.0.1:8000',
-        'http://localhost:8000',
-      ];
-
-      let data: any = null;
-      let lastError: any = null;
-
-      let imagePayload = selectedImage;
-      if (selectedImage.startsWith('blob:')) {
-        try {
-          const blobRes = await fetch(selectedImage);
-          const blob = await blobRes.blob();
-          const base64Data = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-          imagePayload = base64Data;
-        } catch (bErr) {
-          console.warn('Could not convert blob to base64, passing original URI:', bErr);
-        }
-      }
-
-      const payload = {
-        image_url: imagePayload,
-        target_width: estWidthStitches,
-        target_height: estHeightStitches,
-        thread_brand: threadBrand,
-        max_colors: maxColors,
-        target_width_cm: parseFloat(estWidthCm),
-        target_height_cm: parseFloat(estHeightCm),
-        aida_count: aidaCount,
-        canvas_color: canvasColor,
-        margin_cm: marginCm,
+      // 1. Direct in-browser client conversion (works 100% offline, on web, and device)
+      const converted = await convertImageClient({
+        imageUri: selectedImage,
+        targetWidth: estWidthStitches,
+        targetHeight: estHeightStitches,
+        brand: threadBrand,
+        maxColors: maxColors,
+        cleanupConfetti: cleanupConfetti,
         brightness: brightness,
         contrast: contrast,
-        cleanup_confetti: cleanupConfetti,
-        enable_dithering: false,
-        use_inventory: false,
-      };
-
-      for (const endpoint of endpointsToTry) {
-        try {
-          const response = await fetch(`${endpoint}/api/v1/convert`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-          });
-
-          if (response.ok) {
-            data = await response.json();
-            break;
-          } else {
-            const errText = await response.text();
-            lastError = new Error(`HTTP ${response.status}: ${errText}`);
-          }
-        } catch (err: any) {
-          lastError = err;
-        }
-      }
-
-      if (!data) {
-        console.warn('Backend unavailable, fallback to demo pattern:', lastError);
-        data = {
-          ...DEMO_PATTERN,
-          pattern_id: `pattern_${Date.now()}`,
-        };
-        Alert.alert(
-          'Tryb demonstracyjny',
-          'Serwer przetwarzania obrazów jest offline. Załadowano wzór demonstracyjny z pełną paletą DMC.'
-        );
-      }
-
-      const storedPattern: StoredPattern = {
-        pattern_id: data.pattern_id || `pattern_${Date.now()}`,
-        name: `Wzór ${new Date().toLocaleDateString('pl-PL')} (${threadBrand})`,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        grid_data: data.grid_data,
-        color_palette: data.color_palette,
-        dimensions: data.dimensions || {
-          width_stitches: data.grid_data?.width || 50,
-          height_stitches: data.grid_data?.height || 50,
-          width_cm: parseFloat(estWidthCm),
-          height_cm: parseFloat(estHeightCm),
-          aida_count: aidaCount,
-          canvas_color: canvasColor,
-          margin_cm: marginCm,
-          recommended_cut_width_cm: parseFloat(cutWidthCm),
-          recommended_cut_height_cm: parseFloat(cutHeightCm),
-        },
-        materials_summary: data.materials_summary,
-        estimated_time: data.estimated_time_minutes || data.estimated_time || 0,
-        image_url: selectedImage,
-        progress: {
-          completed_stitches: Array(data.grid_data?.height || 0)
-            .fill(null)
-            .map(() => Array(data.grid_data?.width || 0).fill(false)),
-          current_color_index: 0,
-          last_worked: new Date().toISOString(),
-        },
-      };
-
-      await savePattern(storedPattern);
-
-      navigation.navigate('PatternEditor', { 
-        patternId: storedPattern.pattern_id,
-        pattern: storedPattern,
+        aidaCount: aidaCount,
+        widthCm: parseFloat(estWidthCm),
+        heightCm: parseFloat(estHeightCm),
+        canvasColor: canvasColor,
+        marginCm: marginCm,
       });
+
+      await savePattern(converted);
+      setLoading(false);
+
+      Alert.alert(
+        'Haft wygenerowany!',
+        `Pomyślnie przekonwertowano obraz na ${converted.grid_data.width}×${converted.grid_data.height} krz. (${converted.color_palette.length} kolorów ${threadBrand}). Otwieram tamborek!`,
+        [
+          {
+            text: 'Otwórz tamborek',
+            onPress: () =>
+              navigation.navigate('PatternEditor', {
+                patternId: converted.pattern_id,
+                pattern: converted,
+              }),
+          },
+        ]
+      );
     } catch (error: any) {
+      setLoading(false);
       console.error('Conversion error:', error);
       Alert.alert(
-        'Błąd',
-        `Nie udało się otworzyć wzoru: ${error.message || 'Nieznany błąd'}`
+        'Błąd konwersji',
+        `Nie udało się przekonwertować obrazu: ${error.message || 'Nieznany błąd'}`
       );
     } finally {
       setLoading(false);
@@ -426,45 +353,195 @@ export default function ImagePickerScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>🪡 2. Parametry płótna (Kanwa & Gęstość)</Text>
         <Text style={styles.helperText}>
-          Gęstość kanwy (count = liczba ściegów na cal) decyduje o wielkości i precyzji haftu:
+          Wybierz rodzaj płótna, gotowy preset gęstości lub wpisz własny dowolny count:
         </Text>
 
-        <View style={styles.buttonRow}>
+        {/* Fabric Type Selector */}
+        <View style={styles.fabricTypeRow}>
           {[
-            { count: 11, label: 'Aida 11 ct', desc: 'Duże krzyżyki (4.3 śc/cm)' },
-            { count: 14, label: 'Aida 14 ct', desc: 'Najpopularniejsza (5.4 śc/cm)' },
-            { count: 16, label: 'Aida 16 ct', desc: 'Drobny splot (6.3 śc/cm)' },
-            { count: 18, label: 'Aida 18 ct', desc: 'Bardzo drobny (7.1 śc/cm)' },
-            { count: 28, label: 'Evenweave 28 ct', desc: 'Przez 2 nitki = 14ct (5.4 śc/cm)' },
-            { count: 32, label: 'Evenweave 32 ct', desc: 'Przez 2 nitki = 16ct (6.3 śc/cm)' },
-          ].map((item) => (
+            { id: 'aida', label: 'Kanwa Aida', icon: '◻️' },
+            { id: 'evenweave', label: 'Evenweave', icon: '🧵' },
+            { id: 'linen', label: 'Len (Linen)', icon: '🌾' },
+            { id: 'plastic', label: 'Plastikowa', icon: '🔲' },
+            { id: 'custom', label: 'Własny format', icon: '✏️' },
+          ].map((ft) => (
             <TouchableOpacity
-              key={item.count}
+              key={ft.id}
               style={[
-                styles.fabricOptionButton,
-                aidaCount === item.count && styles.optionButtonActive,
+                styles.fabricTypeBtn,
+                fabricType === ft.id && { backgroundColor: theme.primary, borderColor: theme.primary },
               ]}
-              onPress={() => setAidaCount(item.count as any)}
+              onPress={() => {
+                setFabricType(ft.id as any);
+                if (ft.id === 'aida') {
+                  setAidaCount(14);
+                  setIsCustomCount(false);
+                } else if (ft.id === 'evenweave') {
+                  setAidaCount(28);
+                  setIsCustomCount(false);
+                } else if (ft.id === 'linen') {
+                  setAidaCount(32);
+                  setIsCustomCount(false);
+                } else if (ft.id === 'plastic') {
+                  setAidaCount(14);
+                  setIsCustomCount(false);
+                } else if (ft.id === 'custom') {
+                  setIsCustomCount(true);
+                }
+              }}
             >
+              <Text style={{ fontSize: 13, marginRight: 4 }}>{ft.icon}</Text>
               <Text
                 style={[
-                  styles.optionButtonText,
-                  aidaCount === item.count && styles.optionButtonTextActive,
+                  styles.fabricTypeBtnText,
+                  fabricType === ft.id && { color: '#FFFFFF', fontWeight: '800' },
                 ]}
               >
-                {item.label}
-              </Text>
-              <Text
-                style={[
-                  styles.optionButtonSubtext,
-                  aidaCount === item.count && styles.optionButtonSubtextActive,
-                ]}
-              >
-                {item.desc}
+                {ft.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Preset Counts for chosen fabric */}
+        {!isCustomCount && (
+          <View style={styles.buttonRow}>
+            {fabricType === 'aida' &&
+              [
+                { count: 11, label: '11 ct', desc: 'Duże krzyżyki (4.3 śc/cm)' },
+                { count: 14, label: '14 ct', desc: 'Najpopularniejsza (5.4 śc/cm)' },
+                { count: 16, label: '16 ct', desc: 'Drobny splot (6.3 śc/cm)' },
+                { count: 18, label: '18 ct', desc: 'Bardzo drobny (7.1 śc/cm)' },
+                { count: 20, label: '20 ct', desc: 'Gęsty splot (7.9 śc/cm)' },
+              ].map((item) => (
+                <TouchableOpacity
+                  key={item.count}
+                  style={[
+                    styles.fabricOptionButton,
+                    aidaCount === item.count && styles.optionButtonActive,
+                  ]}
+                  onPress={() => setAidaCount(item.count)}
+                >
+                  <Text style={[styles.optionButtonText, aidaCount === item.count && styles.optionButtonTextActive]}>
+                    {item.label}
+                  </Text>
+                  <Text style={[styles.optionButtonSubtext, aidaCount === item.count && styles.optionButtonSubtextActive]}>
+                    {item.desc}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+
+            {fabricType === 'evenweave' &&
+              [
+                { count: 25, label: '25 ct', desc: 'Przez 2 nitki = 12.5ct (4.9 śc/cm)' },
+                { count: 28, label: '28 ct', desc: 'Przez 2 nitki = 14ct (5.4 śc/cm)' },
+                { count: 32, label: '32 ct', desc: 'Przez 2 nitki = 16ct (6.3 śc/cm)' },
+              ].map((item) => (
+                <TouchableOpacity
+                  key={item.count}
+                  style={[
+                    styles.fabricOptionButton,
+                    aidaCount === item.count && styles.optionButtonActive,
+                  ]}
+                  onPress={() => setAidaCount(item.count)}
+                >
+                  <Text style={[styles.optionButtonText, aidaCount === item.count && styles.optionButtonTextActive]}>
+                    {item.label}
+                  </Text>
+                  <Text style={[styles.optionButtonSubtext, aidaCount === item.count && styles.optionButtonSubtextActive]}>
+                    {item.desc}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+
+            {fabricType === 'linen' &&
+              [
+                { count: 28, label: '28 ct', desc: 'Przez 2 nitki = 14ct (5.4 śc/cm)' },
+                { count: 32, label: '32 ct', desc: 'Przez 2 nitki = 16ct (6.3 śc/cm)' },
+                { count: 36, label: '36 ct', desc: 'Przez 2 nitki = 18ct (7.1 śc/cm)' },
+                { count: 40, label: '40 ct', desc: 'Przez 2 nitki = 20ct (7.9 śc/cm)' },
+              ].map((item) => (
+                <TouchableOpacity
+                  key={item.count}
+                  style={[
+                    styles.fabricOptionButton,
+                    aidaCount === item.count && styles.optionButtonActive,
+                  ]}
+                  onPress={() => setAidaCount(item.count)}
+                >
+                  <Text style={[styles.optionButtonText, aidaCount === item.count && styles.optionButtonTextActive]}>
+                    {item.label}
+                  </Text>
+                  <Text style={[styles.optionButtonSubtext, aidaCount === item.count && styles.optionButtonSubtextActive]}>
+                    {item.desc}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+
+            {fabricType === 'plastic' &&
+              [
+                { count: 10, label: '10 ct', desc: 'Duża kanwa (3.9 śc/cm)' },
+                { count: 14, label: '14 ct', desc: 'Standardowa (5.4 śc/cm)' },
+              ].map((item) => (
+                <TouchableOpacity
+                  key={item.count}
+                  style={[
+                    styles.fabricOptionButton,
+                    aidaCount === item.count && styles.optionButtonActive,
+                  ]}
+                  onPress={() => setAidaCount(item.count)}
+                >
+                  <Text style={[styles.optionButtonText, aidaCount === item.count && styles.optionButtonTextActive]}>
+                    {item.label}
+                  </Text>
+                  <Text style={[styles.optionButtonSubtext, aidaCount === item.count && styles.optionButtonSubtextActive]}>
+                    {item.desc}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+          </View>
+        )}
+
+        {/* Custom Count Input */}
+        {(isCustomCount || fabricType === 'custom') && (
+          <View style={[styles.customCountBox, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}>
+            <Text style={[styles.customCountLabel, { color: theme.textPrimary }]}>
+              Wpisz dowolną gęstość kanwy (count):
+            </Text>
+            <View style={styles.customCountInputRow}>
+              <TextInput
+                style={[styles.customCountInput, { backgroundColor: theme.surface, color: theme.textPrimary, borderColor: theme.surfaceBorder }]}
+                keyboardType="numeric"
+                value={customCountInput}
+                onChangeText={(val) => {
+                  setCustomCountInput(val);
+                  const parsed = parseFloat(val);
+                  if (!isNaN(parsed) && parsed > 0) {
+                    setAidaCount(parsed);
+                  }
+                }}
+              />
+              <Text style={[styles.customCountUnit, { color: theme.textSecondary }]}>ct (ściegów na cal)</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.overTwoToggle}
+              onPress={() => setOverTwoThreads(!overTwoThreads)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.checkbox, overTwoThreads && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
+                {overTwoThreads && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>✓</Text>}
+              </View>
+              <Text style={[styles.overTwoText, { color: theme.textSecondary }]}>
+                Haft przez 2 nitki osnowy (np. len/evenweave: efektywnie {(aidaCount / 2).toFixed(1)} ct)
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.customCountSummary, { color: theme.primary }]}>
+              Aktualna gęstość: {stitchesPerCm.toFixed(2)} ściegów/cm ({effectiveCount} ct)
+            </Text>
+          </View>
+        )}
 
         {/* Canvas Color Selection */}
         <Text style={[styles.subRowLabel, { marginTop: 14 }]}>Kolor podkładu / kanwy:</Text>
@@ -919,6 +996,81 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: colors.primaryDark,
     fontWeight: '700',
+  },
+  fabricTypeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  fabricTypeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    backgroundColor: colors.background,
+  },
+  fabricTypeBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  customCountBox: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 14,
+    gap: 10,
+  },
+  customCountLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  customCountInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  customCountInput: {
+    width: 90,
+    fontSize: 18,
+    fontWeight: '800',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    textAlign: 'center',
+  },
+  customCountUnit: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  overTwoToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: colors.surfaceBorder,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overTwoText: {
+    fontSize: 12,
+    flex: 1,
+  },
+  customCountSummary: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
   },
   buttonRow: {
     flexDirection: 'row',

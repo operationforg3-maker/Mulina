@@ -34,36 +34,18 @@ export type RootStackParamList = {
   Profile: undefined;
 };
 
+import MuAlinaTabBar from './src/components/MuAlinaTabBar';
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
-  const { theme } = useTheme();
-
   return (
     <Tab.Navigator
       initialRouteName="WorkshopTab"
+      tabBar={(props) => <MuAlinaTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: theme.surface,
-          borderTopColor: theme.surfaceBorder,
-          borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 84 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-          paddingTop: 8,
-          elevation: 10,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 10,
-        },
-        tabBarActiveTintColor: theme.primary,
-        tabBarInactiveTintColor: theme.textMuted,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '700',
-        },
       }}
     >
       <Tab.Screen
@@ -91,25 +73,8 @@ function MainTabs() {
         component={ImagePickerScreen}
         options={{
           tabBarLabel: 'Nowy',
-          tabBarIcon: ({ focused }) => (
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: theme.primary,
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginTop: -14,
-                shadowColor: theme.primary,
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.4,
-                shadowRadius: 6,
-                elevation: 6,
-              }}
-            >
-              <Text style={{ fontSize: 20 }}>📸</Text>
-            </View>
+          tabBarIcon: () => (
+            <Text style={{ fontSize: 20 }}>📸</Text>
           ),
         }}
       />

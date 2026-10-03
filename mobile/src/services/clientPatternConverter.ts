@@ -153,6 +153,7 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
 
   // 1. Render and extract pixels using canvas
   let pixelData: Uint8ClampedArray;
+  let thumbnailDataUrl: string | undefined;
 
   if (typeof document !== 'undefined') {
     const img = await loadImage(imageUri);
@@ -172,6 +173,12 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
 
     const imgData = ctx.getImageData(0, 0, w, h);
     pixelData = imgData.data;
+
+    try {
+      thumbnailDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+    } catch {
+      // ignore
+    }
   } else {
     throw new Error('Środowisko nie obsługuje Canvas (użyj wersji web lub backend)');
   }
@@ -328,7 +335,8 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
       canvas_color: canvasColor,
     },
     estimated_time: Math.round(totalStitches / 135) * 60, // ~135 stitches per hour
-    image_url: imageUri,
+    thumbnail: thumbnailDataUrl,
+    image_url: imageUri && !imageUri.startsWith('data:') ? imageUri : thumbnailDataUrl,
     progress: {
       completed_stitches: Array(h).fill(null).map(() => Array(w).fill(false)),
       current_color_index: 0,

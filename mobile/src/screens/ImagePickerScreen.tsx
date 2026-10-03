@@ -325,7 +325,11 @@ export default function ImagePickerScreen() {
         marginCm: marginCm,
       });
 
-      await savePattern(converted);
+      try {
+        await savePattern(converted);
+      } catch (saveErr) {
+        console.warn('savePattern ignored storage error:', saveErr);
+      }
       setLoading(false);
 
       // Instantly open the interactive pattern reader!

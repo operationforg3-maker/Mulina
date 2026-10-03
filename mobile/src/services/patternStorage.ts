@@ -94,18 +94,52 @@ export interface PatternListItem {
 }
 
 /**
+ * Prune oldest patterns if localStorage quota is tight
+ */
+async function pruneOldPatterns(keepCount: number = 6): Promise<void> {
+  try {
+    const list = await getPatternsList();
+    if (list.length > keepCount) {
+      const toDelete = list.slice(keepCount);
+      for (const item of toDelete) {
+        await AsyncStorage.removeItem(`${STORAGE_KEY_PREFIX}${item.pattern_id}`);
+      }
+      const keptList = list.slice(0, keepCount);
+      await AsyncStorage.setItem(PATTERNS_LIST_KEY, JSON.stringify(keptList));
+    }
+  } catch (e) {
+    console.warn('Error pruning old patterns:', e);
+  }
+}
+
+/**
  * Save a pattern to local storage
  */
 export async function savePattern(pattern: StoredPattern): Promise<void> {
   try {
+    const safePattern = { ...pattern };
+    // Strip giant base64 data URIs from persistent storage to prevent QuotaExceededError
+    if (safePattern.image_url && safePattern.image_url.startsWith('data:') && safePattern.image_url.length > 50000) {
+      delete (safePattern as any).image_url;
+    }
+    if (safePattern.thumbnail && safePattern.thumbnail.startsWith('data:') && safePattern.thumbnail.length > 50000) {
+      delete (safePattern as any).thumbnail;
+    }
+
     const key = `${STORAGE_KEY_PREFIX}${pattern.pattern_id}`;
-    await AsyncStorage.setItem(key, JSON.stringify(pattern));
+    try {
+      await AsyncStorage.setItem(key, JSON.stringify(safePattern));
+    } catch (quotaErr) {
+      console.warn('AsyncStorage quota error, pruning old patterns and retrying...', quotaErr);
+      await pruneOldPatterns(4);
+      await AsyncStorage.setItem(key, JSON.stringify(safePattern));
+    }
     
     // Update patterns list
-    await updatePatternsList(pattern);
+    await updatePatternsList(safePattern);
   } catch (error) {
-    console.error('Error saving pattern:', error);
-    throw new Error('Failed to save pattern');
+    console.warn('Warning: Could not persist pattern to local storage (quota or private mode):', error);
+    // Graceful fallback: do NOT throw, allow navigation to PatternEditor
   }
 }
 
@@ -174,36 +208,43 @@ export const listRecentPatterns = getPatternsList;
  * Update patterns list with new/updated pattern info
  */
 async function updatePatternsList(pattern: StoredPattern): Promise<void> {
-  const list = await getPatternsList();
-  
-  // Calculate progress percentage
-  let progressPercent = 0;
-  if (pattern.progress?.completed_stitches) {
-    const totalStitches = pattern.dimensions.width_stitches * pattern.dimensions.height_stitches;
-    const completedCount = pattern.progress.completed_stitches.flat().filter(Boolean).length;
-    progressPercent = Math.round((completedCount / totalStitches) * 100);
+  try {
+    const list = await getPatternsList();
+    
+    // Calculate progress percentage
+    let progressPercent = 0;
+    if (pattern.progress?.completed_stitches) {
+      const totalStitches = pattern.dimensions.width_stitches * pattern.dimensions.height_stitches;
+      const completedCount = pattern.progress.completed_stitches.flat().filter(Boolean).length;
+      progressPercent = Math.round((completedCount / totalStitches) * 100);
+    }
+    
+    const listItem: PatternListItem = {
+      pattern_id: pattern.pattern_id,
+      name: pattern.name,
+      created_at: pattern.created_at,
+      updated_at: pattern.updated_at,
+      thumbnail: pattern.thumbnail && pattern.thumbnail.length < 50000 ? pattern.thumbnail : undefined,
+      image_url: pattern.image_url && !pattern.image_url.startsWith('data:') ? pattern.image_url : undefined,
+      width_stitches: pattern.dimensions.width_stitches,
+      height_stitches: pattern.dimensions.height_stitches,
+      color_count: pattern.color_palette.length,
+      progress_percent: progressPercent,
+    };
+    
+    // Remove old entry if exists
+    const filteredList = list.filter(p => p.pattern_id !== pattern.pattern_id);
+    
+    // Add new entry
+    filteredList.unshift(listItem);
+    
+    // Keep max 20 entries in recent list
+    const trimmed = filteredList.slice(0, 20);
+    
+    await AsyncStorage.setItem(PATTERNS_LIST_KEY, JSON.stringify(trimmed));
+  } catch (err) {
+    console.warn('Could not update patterns list in storage:', err);
   }
-  
-  const listItem: PatternListItem = {
-    pattern_id: pattern.pattern_id,
-    name: pattern.name,
-    created_at: pattern.created_at,
-    updated_at: pattern.updated_at,
-    thumbnail: pattern.thumbnail,
-    image_url: pattern.image_url,
-    width_stitches: pattern.dimensions.width_stitches,
-    height_stitches: pattern.dimensions.height_stitches,
-    color_count: pattern.color_palette.length,
-    progress_percent: progressPercent,
-  };
-  
-  // Remove old entry if exists
-  const filteredList = list.filter(p => p.pattern_id !== pattern.pattern_id);
-  
-  // Add new entry
-  filteredList.unshift(listItem);
-  
-  await AsyncStorage.setItem(PATTERNS_LIST_KEY, JSON.stringify(filteredList));
 }
 
 /**

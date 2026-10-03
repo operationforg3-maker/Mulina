@@ -1,7 +1,17 @@
-"""
-Unit tests for color matching engine
-"""
-import pytest
+import math
+try:
+    import pytest
+except ImportError:
+    class PytestMock:
+        @staticmethod
+        def approx(expected, abs=1e-6):
+            tolerance = abs
+            class ApproxVal:
+                def __eq__(self, actual):
+                    return math.fabs(actual - expected) <= tolerance
+            return ApproxVal()
+    pytest = PytestMock()
+
 from backend.color_engine.delta_e import (
     rgb_to_lab, 
     delta_e, 
@@ -89,5 +99,29 @@ def test_find_closest_thread_brand_filter():
     assert result["thread"].brand == "Anchor"
     assert result["thread"].color_code == "403"
 
+import unittest
+
+class TestColorEngine(unittest.TestCase):
+    def test_white(self):
+        test_rgb_to_lab_white()
+
+    def test_black(self):
+        test_rgb_to_lab_black()
+
+    def test_identical(self):
+        test_delta_e_identical_colors()
+
+    def test_perceptual(self):
+        test_delta_e_perceptual_difference()
+
+    def test_closest(self):
+        test_find_closest_thread()
+
+    def test_closest_inventory(self):
+        test_find_closest_thread_with_inventory()
+
+    def test_brand_filter(self):
+        test_find_closest_thread_brand_filter()
+
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    unittest.main(verbosity=2)

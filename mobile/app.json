@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Mulina",
-    "slug": "mulina",
+    "name": "Mu'alina",
+    "slug": "mualina",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -37,15 +37,15 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
-      "name": "Mulina - Embroidery Companion",
+      "name": "Mulina — Wzory Haftu i Tamborek",
       "shortName": "Mulina",
-      "description": "Convert images into professional embroidery patterns with precise color matching",
-      "themeColor": "#7C3AED",
-      "backgroundColor": "#ffffff",
+      "description": "Profesjonalny asystent haftu krzyżykowego i konwerter zdjęć na muliny DMC na tablet i telefon",
+      "themeColor": "#D9777F",
+      "backgroundColor": "#FAF7F2",
       "display": "standalone",
-      "orientation": "portrait",
-      "scope": "/",
-      "startUrl": "/",
+      "orientation": "any",
+      "scope": "/mulina/",
+      "startUrl": "/mulina/",
       "lang": "pl",
       "preferRelatedApplications": false
     },
@@ -57,6 +57,9 @@
         }
       ]
     ],
+    "experiments": {
+      "baseUrl": "/mulina"
+    },
     "extra": {
       "eas": {
         "projectId": "your-eas-project-id"

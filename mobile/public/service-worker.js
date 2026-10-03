@@ -1,20 +1,24 @@
 // Mulina PWA Service Worker
-// Offline-first caching strategy for embroidery pattern app
+// Offline-first caching strategy for embroidery patterns
 
-const CACHE_VERSION = 'mulina-v1';
+const CACHE_VERSION = 'mulina-v2';
+const BASE_PATH = self.registration.scope || '/mulina/';
+
 const CACHE_ASSETS = [
-  '/',
-  '/index.html',
-  '/static/js/bundle.js',
-  '/manifest.json',
+  BASE_PATH,
+  `${BASE_PATH}index.html`,
+  `${BASE_PATH}manifest.json`,
+  `${BASE_PATH}favicon.ico`,
 ];
 
 // Install service worker and cache assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_VERSION).then((cache) => {
-      console.log('[SW] Caching assets');
-      return cache.addAll(CACHE_ASSETS);
+      console.log('[SW] Caching assets for', BASE_PATH);
+      return cache.addAll(CACHE_ASSETS).catch((err) => {
+        console.warn('[SW] Initial asset caching warning:', err);
+      });
     })
   );
   self.skipWaiting();
@@ -39,6 +43,9 @@ self.addEventListener('activate', (event) => {
 
 // Fetch strategy: Cache first, fallback to network
 self.addEventListener('fetch', (event) => {
+  // Only cache GET requests
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -46,8 +53,8 @@ self.addEventListener('fetch', (event) => {
       }
 
       return fetch(event.request).then((networkResponse) => {
-        // Cache successful GET requests
-        if (event.request.method === 'GET' && networkResponse.status === 200) {
+        // Cache successful requests from same origin
+        if (networkResponse.status === 200 && event.request.url.startsWith(self.location.origin)) {
           const responseClone = networkResponse.clone();
           caches.open(CACHE_VERSION).then((cache) => {
             cache.put(event.request, responseClone);
@@ -56,9 +63,8 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       });
     }).catch(() => {
-      // Return offline fallback for navigation requests
       if (event.request.mode === 'navigate') {
-        return caches.match('/');
+        return caches.match(`${BASE_PATH}index.html`) || caches.match(BASE_PATH);
       }
     })
   );

@@ -22,5 +22,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:8000/health')"
 
-# Uruchom aplikację
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Zmienna środowiskowa dla bazy danych
+ENV DATABASE_PATH=/app/data/threads.db
+
+# Uruchom aplikację z dynamicznym portem
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

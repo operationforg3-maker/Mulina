@@ -1,24 +1,24 @@
 {
-  "name": "Mulina - Embroidery Companion",
-  "short_name": "Mulina",
-  "description": "Convert images into professional embroidery patterns with precise color matching",
-  "start_url": "/",
-  "scope": "/",
+  "name": "Mu'alina — Cyfrowy Tamborek i Wzory Haftu",
+  "short_name": "Mu'alina",
+  "description": "Profesjonalna aplikacja do haftu krzyżykowego i płaskiego, czytnik schematów .saga/.xsd/.pdf i konwerter zdjęć z AI",
+  "start_url": "/mulina/",
+  "scope": "/mulina/",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "theme_color": "#7C3AED",
-  "background_color": "#ffffff",
+  "orientation": "any",
+  "theme_color": "#D9777F",
+  "background_color": "#FAF7F2",
   "lang": "pl",
   "dir": "ltr",
   "icons": [
     {
-      "src": "/icon.png",
+      "src": "/mulina/icon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon.png",
+      "src": "/mulina/icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -27,20 +27,20 @@
   "categories": ["lifestyle", "utilities", "productivity"],
   "screenshots": [
     {
-      "src": "/splash.png",
+      "src": "/mulina/splash.png",
       "sizes": "1284x2778",
       "type": "image/png"
     }
   ],
   "shortcuts": [
     {
-      "name": "New Pattern",
-      "short_name": "New",
-      "description": "Create a new embroidery pattern",
-      "url": "/ImagePicker",
+      "name": "Nowy wzór",
+      "short_name": "Nowy",
+      "description": "Przekonwertuj zdjęcie na wzór haftu",
+      "url": "/mulina/#/ImagePicker",
       "icons": [
         {
-          "src": "/icon.png",
+          "src": "/mulina/icon.png",
           "sizes": "96x96",
           "type": "image/png"
         }

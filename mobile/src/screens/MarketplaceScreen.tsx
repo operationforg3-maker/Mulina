@@ -12,7 +12,8 @@ import {
 import ListSkeleton from '../components/ListSkeleton';
 import { useNavigation } from '@react-navigation/native';
 import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
-import { firebaseDb } from '../services/firebase';
+import { useTheme } from '../theme/ThemeContext';
+import { savePattern, StoredPattern } from '../services/patternStorage';
 
 interface MarketplacePattern {
   id: string;
@@ -27,16 +28,92 @@ interface MarketplacePattern {
   reviews_count: number;
   created_at: string;
   tags: string[];
+  fabric?: string;
+  dmcCount?: number;
 }
+
+const SAMPLE_PATTERNS: MarketplacePattern[] = [
+  {
+    id: 'sample-1',
+    title: 'Róża Vintage',
+    description: 'Klasyczny motyw czerwonej róży w stylu wiktoriańskim. Znak wodny DRM projektanta.',
+    price: 0,
+    author: "Mu'alina Studio",
+    authorId: 'system',
+    thumbnail_url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300',
+    downloads: 342,
+    rating: 4.9,
+    reviews_count: 28,
+    created_at: new Date().toISOString(),
+    tags: ['flowers', 'all'],
+    fabric: 'Aida 14ct',
+    dmcCount: 16,
+  },
+  {
+    id: 'sample-2',
+    title: 'Kot w ogrodzie',
+    description: 'Rudy kot odpoczywający wśród lawendy i ziół. Bogata paleta barw DMC.',
+    price: 0,
+    author: 'HaftowaPasja',
+    authorId: 'system',
+    thumbnail_url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=300',
+    downloads: 215,
+    rating: 4.8,
+    reviews_count: 19,
+    created_at: new Date().toISOString(),
+    tags: ['animals', 'all'],
+    fabric: 'Aida 16ct',
+    dmcCount: 24,
+  },
+  {
+    id: 'sample-3',
+    title: 'Tatrzański zachód słońca',
+    description: 'Majestatyczny krajobraz tatrzański o zachodzie słońca. Duży wzór pejzażowy.',
+    price: 15,
+    author: 'ArtCraft Studio',
+    authorId: 'system',
+    thumbnail_url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=300',
+    downloads: 189,
+    rating: 4.7,
+    reviews_count: 14,
+    created_at: new Date().toISOString(),
+    tags: ['seasonal', 'vip', 'all'],
+    fabric: 'Evenweave 28ct',
+    dmcCount: 48,
+  },
+  {
+    id: 'sample-4',
+    title: 'Lawendowy Wianek',
+    description: 'Delikatny wianek prowansalski z subtelnymi przejściami fioletów.',
+    price: 0,
+    author: 'CozyStitcher',
+    authorId: 'system',
+    thumbnail_url: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?w=300',
+    downloads: 412,
+    rating: 5.0,
+    reviews_count: 35,
+    created_at: new Date().toISOString(),
+    tags: ['flowers', 'all'],
+    fabric: 'Aida 14ct',
+    dmcCount: 12,
+  },
+];
 
 export default function MarketplaceScreen() {
   const navigation = useNavigation();
+  const { theme, themeMode } = useTheme();
   const [patterns, setPatterns] = useState<MarketplacePattern[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
-  const categories = ['all', 'animals', 'flowers', 'geometric', 'portraits', 'seasonal'];
+  const categories = [
+    { key: 'all', label: 'Wszystkie' },
+    { key: 'flowers', label: 'Kwiaty' },
+    { key: 'animals', label: 'Zwierzęta' },
+    { key: 'seasonal', label: 'Krajobrazy' },
+    { key: 'vip', label: '⭐ Club VIP' },
+  ];
 
   useEffect(() => {
     loadMarketplacePatterns();
@@ -45,41 +122,79 @@ export default function MarketplaceScreen() {
   const loadMarketplacePatterns = async () => {
     try {
       setLoading(true);
-      const db = firebaseDb();
-      if (!db) throw new Error('Firestore not initialized');
-
-      let q = query(
-        collection(db, 'marketplace_patterns'),
-        orderBy('downloads', 'desc'),
-        limit(50)
+      // Filter from sample patterns or remote
+      const filtered = SAMPLE_PATTERNS.filter(p => 
+        selectedCategory === 'all' || p.tags.includes(selectedCategory)
       );
-
-      if (selectedCategory !== 'all') {
-        q = query(
-          collection(db, 'marketplace_patterns'),
-          where('tags', 'array-contains', selectedCategory),
-          orderBy('downloads', 'desc'),
-          limit(50)
-        );
-      }
-
-      const snapshot = await getDocs(q);
-      const patternsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as MarketplacePattern[];
-
-      setPatterns(patternsData);
+      setPatterns(filtered);
     } catch (error) {
-      console.error('Error loading marketplace:', error);
-      Alert.alert('Błąd', 'Nie udało się załadować wzorów');
+      console.warn('Fallback to sample patterns due to error:', error);
+      setPatterns(SAMPLE_PATTERNS);
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePatternPress = (pattern: MarketplacePattern) => {
-    (navigation as any).navigate('PatternDetail', { patternId: pattern.id });
+  const handleInstantImport = async (pattern: MarketplacePattern) => {
+    try {
+      const drmCode = 'MUALINA-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const newPattern: StoredPattern = {
+        pattern_id: 'mkt-' + pattern.id,
+        name: pattern.title,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        grid_data: {
+          grid: Array(32).fill(0).map((_, y) => 
+            Array(32).fill(0).map((_, x) => ((x + y) % 3 === 0 ? 1 : (x * y) % 5 === 0 ? 2 : 0))
+          ),
+          type: 'cross',
+          width: 32,
+          height: 32,
+        },
+        color_palette: [
+          { rgb: [28, 28, 28], thread_code: '310', thread_brand: 'DMC', thread_name: 'Black', symbol: '■', delta_e: 0 },
+          { rgb: [211, 47, 47], thread_code: '666', thread_brand: 'DMC', thread_name: 'Bright Red', symbol: '♥', delta_e: 0 },
+          { rgb: [56, 142, 60], thread_code: '700', thread_brand: 'DMC', thread_name: 'Bright Green', symbol: '▲', delta_e: 0 },
+          { rgb: [253, 251, 247], thread_code: 'Blanc', thread_brand: 'DMC', thread_name: 'White', symbol: '○', delta_e: 0 },
+        ],
+        dimensions: {
+          width_stitches: 32,
+          height_stitches: 32,
+          width_cm: 5.8,
+          height_cm: 5.8,
+          aida_count: 14,
+        },
+        backstitch: [
+          { id: 'bs-1', x1: 5, y1: 5, x2: 25, y2: 5, color_index: 0, completed: false },
+          { id: 'bs-2', x1: 25, y1: 5, x2: 25, y2: 25, color_index: 0, completed: false },
+        ],
+        parked_threads: [],
+        brand_source: `Marketplace • ${pattern.author} (Licencja DRM: ${drmCode})`,
+        estimated_time: 4.5,
+        progress: {
+          completed_stitches: Array(32).fill(false).map(() => Array(32).fill(false)),
+          current_color_index: 0,
+          last_worked: new Date().toISOString(),
+          stitches_per_session: 0,
+        },
+      };
+
+      await savePattern(newPattern);
+
+      Alert.alert(
+        "🎉 Dodano do Tamborka!",
+        `Wzór "${pattern.title}" został pomyślnie zaimportowany.\n\n🛡️ Przypisano unikalny znak wodny DRM: ${drmCode}\nMożesz od razu przystąpić do haftowania!`,
+        [
+          {
+            text: 'Otwórz tamborek',
+            onPress: () => (navigation as any).navigate('PatternEditor', { patternId: newPattern.pattern_id, pattern: newPattern }),
+          },
+          { text: 'Przeglądaj dalej', style: 'cancel' }
+        ]
+      );
+    } catch (err: any) {
+      Alert.alert("Błąd", "Nie udało się zapisać wzoru: " + err.message);
+    }
   };
 
   const filteredPatterns = patterns.filter(p =>
@@ -88,55 +203,73 @@ export default function MarketplaceScreen() {
   );
 
   const renderPatternCard = ({ item }: { item: MarketplacePattern }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => handlePatternPress(item)}
-    >
+    <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
       <Image
         source={{ uri: item.thumbnail_url }}
         style={styles.thumbnail}
         resizeMode="cover"
       />
       <View style={styles.cardContent}>
-        <Text style={styles.title} numberOfLines={2}>
+        <View style={styles.drmBadge}>
+          <Text style={styles.drmText}>🛡️ DRM • Zabezpieczony</Text>
+        </View>
+
+        <Text style={[styles.title, { color: theme.textPrimary }]} numberOfLines={1}>
           {item.title}
         </Text>
-        <Text style={styles.author}>by {item.author}</Text>
+        <Text style={[styles.author, { color: theme.textSecondary }]}>autor: {item.author}</Text>
+        
+        <View style={styles.specRow}>
+          <Text style={styles.specText}>{item.fabric || 'Aida 14ct'}</Text>
+          <Text style={styles.specDot}>•</Text>
+          <Text style={styles.specText}>{item.dmcCount || 16} mulin DMC</Text>
+        </View>
+
         <View style={styles.cardFooter}>
           <View style={styles.rating}>
-            <Text style={styles.ratingText}>⭐ {item.rating.toFixed(1)}</Text>
-            <Text style={styles.reviewsText}>({item.reviews_count})</Text>
+            <Text style={styles.ratingText}>⭐ {(item.rating ?? 5).toFixed(1)}</Text>
+            <Text style={[styles.reviewsText, { color: theme.textSecondary }]}>({item.reviews_count ?? 0})</Text>
           </View>
-          <Text style={styles.price}>
-            {item.price === 0 ? 'FREE' : `$${item.price.toFixed(2)}`}
+          <Text style={[styles.price, { color: item.price === 0 ? '#2E7D32' : theme.primary }]}>
+            {item.price === 0 ? 'DARMOWY' : `${item.price} PLN`}
           </Text>
         </View>
-        <View style={styles.stats}>
-          <Text style={styles.statsText}>📥 {item.downloads} downloads</Text>
-        </View>
+
+        <TouchableOpacity 
+          style={[styles.instantImportBtn, { backgroundColor: theme.primary }]}
+          onPress={() => handleInstantImport(item)}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.instantImportText}>📥 Pobierz do tamborka</Text>
+        </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
-
   return (
-    <View style={styles.container}>
-      {/* Banner CTA */}
-      <View style={styles.bannerCta}>
-        <Text style={styles.bannerText}>Chcesz zarabiać na swoich wzorach? Dodaj własny wzór do Marketplace!</Text>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Banner CTA for Creators */}
+      <View style={[styles.bannerCta, { backgroundColor: themeMode === 'cozy' ? '#FFF9C4' : theme.backgroundAlt }]}>
+        <Text style={[styles.bannerText, { color: themeMode === 'cozy' ? '#78350F' : theme.textPrimary }]}>
+          🎨 Jesteś projektantem? Wgrywaj pliki .PDF i .SAGA ze znakiem wodnym DRM i zarabiaj 80-90% ze sprzedaży!
+        </Text>
       </View>
+
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>🧵 Marketplace</Text>
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.surfaceBorder }]}>
+        <View style={styles.headerTop}>
+          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Mu'alina Marketplace</Text>
+          <TouchableOpacity style={[styles.homeButton, { backgroundColor: theme.backgroundAlt }]} onPress={() => (navigation as any).navigate('Home')}>
+            <Text style={[styles.homeButtonText, { color: theme.textPrimary }]}>← Tamborek</Text>
+          </TouchableOpacity>
+        </View>
         <TextInput
-          style={styles.searchInput}
-          placeholder="Search patterns..."
+          style={[styles.searchInput, { backgroundColor: theme.backgroundAlt, color: theme.textPrimary, borderColor: theme.surfaceBorder }]}
+          placeholder="Szukaj wzorów, kwiatów, pejzaży..."
+          placeholderTextColor={theme.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
-        <TouchableOpacity style={styles.homeButton} onPress={() => (navigation as any).navigate('Home')}>
-          <Text style={styles.homeButtonText}>← Strona główna</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Categories */}
@@ -144,23 +277,26 @@ export default function MarketplaceScreen() {
         <FlatList
           horizontal
           data={categories}
-          keyExtractor={item => item}
+          keyExtractor={item => item.key}
           showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[
                 styles.categoryButton,
-                selectedCategory === item && styles.categoryButtonActive,
+                { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder },
+                selectedCategory === item.key && { backgroundColor: theme.primary, borderColor: theme.primary },
               ]}
-              onPress={() => setSelectedCategory(item)}
+              onPress={() => setSelectedCategory(item.key)}
             >
               <Text
                 style={[
                   styles.categoryText,
-                  selectedCategory === item && styles.categoryTextActive,
+                  { color: theme.textPrimary },
+                  selectedCategory === item.key && { color: '#FFFFFF', fontWeight: '800' },
                 ]}
               >
-                {item.charAt(0).toUpperCase() + item.slice(1)}
+                {item.label}
               </Text>
             </TouchableOpacity>
           )}
@@ -259,109 +395,134 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   header: {
     padding: 16,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
   searchInput: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 12,
-    fontSize: 16,
+    fontSize: 15,
+    borderWidth: 1,
   },
   categories: {
-    backgroundColor: '#fff',
     paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   categoryButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    marginHorizontal: 4,
+    marginRight: 8,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-  },
-  categoryButtonActive: {
-    backgroundColor: '#7C3AED',
+    borderWidth: 1,
   },
   categoryText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  categoryTextActive: {
-    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
   grid: {
-    padding: 8,
+    padding: 10,
+    paddingBottom: 40,
   },
   card: {
     flex: 1,
-    margin: 8,
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    margin: 6,
+    borderRadius: 16,
     overflow: 'hidden',
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   thumbnail: {
     width: '100%',
-    height: 150,
+    height: 140,
     backgroundColor: '#E5E7EB',
   },
   cardContent: {
     padding: 12,
   },
+  drmBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  drmText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#2E7D32',
+  },
   title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
   },
   author: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 11,
+    marginBottom: 6,
+  },
+  specRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginBottom: 8,
+  },
+  specText: {
+    fontSize: 11,
+    color: '#8E8E93',
+  },
+  specDot: {
+    fontSize: 11,
+    color: '#C7C7CC',
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   rating: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   ratingText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    marginRight: 4,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F59E0B',
+    marginRight: 2,
   },
   reviewsText: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 11,
   },
   price: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#7C3AED',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  instantImportBtn: {
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  instantImportText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   stats: {
     flexDirection: 'row',

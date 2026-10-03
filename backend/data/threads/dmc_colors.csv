@@ -1,0 +1,108 @@
+thread_id,brand,color_code,color_name,r,g,b
+dmc_blanc,DMC,BLANC,White,255,255,255
+dmc_ecru,DMC,ECRU,Ecru,240,234,218
+dmc_208,DMC,208,Very Dark Lavender,131,85,138
+dmc_209,DMC,209,Dark Lavender,163,123,167
+dmc_210,DMC,210,Medium Lavender,195,159,195
+dmc_211,DMC,211,Light Lavender,227,203,227
+dmc_221,DMC,221,Very Dark Shell Pink,137,51,74
+dmc_223,DMC,223,Light Shell Pink,204,131,131
+dmc_224,DMC,224,Very Light Shell Pink,232,190,190
+dmc_225,DMC,225,Ultra Very Light Shell Pink,255,222,213
+dmc_300,DMC,300,Very Dark Mahogany,111,47,0
+dmc_301,DMC,301,Medium Mahogany,184,99,43
+dmc_304,DMC,304,Medium Red,180,35,50
+dmc_307,DMC,307,Lemon,253,237,84
+dmc_310,DMC,310,Black,0,0,0
+dmc_311,DMC,311,Medium Navy Blue,50,91,131
+dmc_312,DMC,312,Very Dark Baby Blue,53,106,142
+dmc_315,DMC,315,Medium Dark Antique Mauve,129,75,85
+dmc_316,DMC,316,Medium Antique Mauve,183,116,126
+dmc_317,DMC,317,Pewter Gray,108,108,108
+dmc_318,DMC,318,Light Steel Gray,171,171,171
+dmc_319,DMC,319,Very Dark Pistachio Green,32,95,46
+dmc_320,DMC,320,Medium Pistachio Green,105,136,90
+dmc_321,DMC,321,Red,199,44,72
+dmc_322,DMC,322,Dark Baby Blue,90,143,184
+dmc_326,DMC,326,Very Dark Rose,169,39,65
+dmc_327,DMC,327,Dark Violet,99,54,102
+dmc_333,DMC,333,Very Dark Blue Violet,92,84,120
+dmc_334,DMC,334,Medium Baby Blue,116,168,200
+dmc_335,DMC,335,Rose,238,84,110
+dmc_336,DMC,336,Navy Blue,37,59,115
+dmc_340,DMC,340,Medium Blue Violet,173,167,199
+dmc_341,DMC,341,Light Blue Violet,203,200,221
+dmc_347,DMC,347,Very Dark Salmon,191,45,45
+dmc_349,DMC,349,Dark Coral,210,16,53
+dmc_350,DMC,350,Medium Coral,227,49,61
+dmc_351,DMC,351,Coral,233,106,103
+dmc_352,DMC,352,Light Coral,253,156,151
+dmc_353,DMC,353,Peach,254,215,204
+dmc_355,DMC,355,Dark Terra Cotta,152,79,68
+dmc_356,DMC,356,Medium Terra Cotta,198,115,103
+dmc_367,DMC,367,Dark Pistachio Green,97,122,82
+dmc_368,DMC,368,Light Pistachio Green,166,194,152
+dmc_369,DMC,369,Very Light Pistachio Green,215,237,204
+dmc_370,DMC,370,Medium Mustard,184,148,87
+dmc_371,DMC,371,Mustard,191,155,95
+dmc_372,DMC,372,Light Mustard,204,183,132
+dmc_400,DMC,400,Dark Mahogany,143,66,25
+dmc_402,DMC,402,Very Light Mahogany,247,160,86
+dmc_413,DMC,413,Dark Pewter Gray,86,86,86
+dmc_414,DMC,414,Dark Steel Gray,140,140,140
+dmc_415,DMC,415,Pearl Gray,211,211,214
+dmc_420,DMC,420,Dark Hazelnut Brown,160,112,66
+dmc_422,DMC,422,Light Hazelnut Brown,198,159,123
+dmc_433,DMC,433,Medium Brown,122,69,31
+dmc_434,DMC,434,Light Brown,152,94,51
+dmc_435,DMC,435,Very Light Brown,187,107,57
+dmc_436,DMC,436,Tan,203,127,72
+dmc_437,DMC,437,Light Tan,228,187,142
+dmc_444,DMC,444,Dark Lemon,255,206,0
+dmc_445,DMC,445,Light Lemon,255,251,139
+dmc_451,DMC,451,Dark Shell Gray,145,123,115
+dmc_452,DMC,452,Medium Shell Gray,192,179,174
+dmc_453,DMC,453,Light Shell Gray,215,206,203
+dmc_469,DMC,469,Avocado Green,114,132,60
+dmc_470,DMC,470,Light Avocado Green,148,172,84
+dmc_471,DMC,471,Very Light Avocado Green,174,191,121
+dmc_472,DMC,472,Ultra Light Avocado Green,217,228,189
+dmc_498,DMC,498,Dark Red,167,19,43
+dmc_500,DMC,500,Very Dark Blue Green,0,84,65
+dmc_501,DMC,501,Dark Blue Green,60,108,91
+dmc_502,DMC,502,Blue Green,134,158,134
+dmc_503,DMC,503,Medium Blue Green,164,189,162
+dmc_504,DMC,504,Very Light Blue Green,206,221,193
+dmc_517,DMC,517,Dark Wedgewood,59,118,143
+dmc_518,DMC,518,Light Wedgewood,102,155,173
+dmc_519,DMC,519,Sky Blue,125,179,191
+dmc_520,DMC,520,Dark Fern Green,102,109,79
+dmc_522,DMC,522,Fern Green,150,150,127
+dmc_523,DMC,523,Light Fern Green,172,183,162
+dmc_524,DMC,524,Very Light Fern Green,196,205,172
+dmc_535,DMC,535,Very Light Ash Gray,99,100,90
+dmc_543,DMC,543,Ultra Very Light Beige Brown,242,227,206
+dmc_550,DMC,550,Very Dark Violet,92,24,110
+dmc_552,DMC,552,Medium Violet,128,58,107
+dmc_553,DMC,553,Violet,161,96,137
+dmc_554,DMC,554,Light Violet,219,179,203
+dmc_561,DMC,561,Very Dark Jade,0,92,73
+dmc_562,DMC,562,Medium Jade,83,130,100
+dmc_563,DMC,563,Light Jade,189,209,182
+dmc_564,DMC,564,Very Light Jade,212,226,202
+dmc_580,DMC,580,Dark Moss Green,128,110,70
+dmc_581,DMC,581,Moss Green,167,145,85
+dmc_597,DMC,597,Turquoise,88,164,176
+dmc_598,DMC,598,Light Turquoise,185,217,214
+dmc_600,DMC,600,Very Dark Cranberry,206,41,88
+dmc_601,DMC,601,Dark Cranberry,214,64,101
+dmc_602,DMC,602,Medium Cranberry,227,75,109
+dmc_603,DMC,603,Cranberry,255,164,190
+dmc_604,DMC,604,Light Cranberry,255,189,202
+dmc_605,DMC,605,Very Light Cranberry,255,207,214
+dmc_606,DMC,606,Bright Orange Red,250,55,20
+dmc_608,DMC,608,Bright Orange,253,93,0
+dmc_610,DMC,610,Dark Drab Brown,121,96,71
+dmc_611,DMC,611,Drab Brown,149,114,80
+dmc_612,DMC,612,Light Drab Brown,188,140,97
+dmc_613,DMC,613,Very Light Drab Brown,220,194,164

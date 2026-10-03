@@ -34,12 +34,49 @@ export interface StoredPattern {
     height_stitches: number;
     width_cm: number;
     height_cm: number;
+    aida_count?: number;
+    canvas_color?: string;
+    margin_cm?: number;
+    recommended_cut_width_cm?: number;
+    recommended_cut_height_cm?: number;
+  };
+  backstitch?: Array<{
+    id: string;
+    x1: number; // grid intersection (0 to width)
+    y1: number; // grid intersection (0 to height)
+    x2: number;
+    y2: number;
+    color_index: number;
+    completed?: boolean;
+  }>;
+  parked_threads?: Array<{
+    r: number;
+    c: number;
+    corner: 'NW' | 'NE' | 'SW' | 'SE';
+    thread_code: string;
+    color_index: number;
+  }>;
+  blends?: Array<{
+    id: string;
+    symbol: string;
+    threads: Array<{ brand: string; code: string; strands: number; rgb?: number[] }>;
+  }>;
+  brand_source?: string;
+  materials_summary?: {
+    total_stitches: number;
+    total_skeins: number;
+    estimated_cost_pln: number;
+    fabric_cut_size: string;
+    fabric_type: string;
+    canvas_color?: string;
   };
   estimated_time: number;
   progress?: {
     completed_stitches: boolean[][]; // true = done, false = todo
+    completed_backstitch?: string[]; // IDs of completed backstitches
     current_color_index: number;
     last_worked: string;
+    stitches_per_session?: number;
   };
 }
 
@@ -130,6 +167,8 @@ export async function getPatternsList(): Promise<PatternListItem[]> {
     return [];
   }
 }
+
+export const listRecentPatterns = getPatternsList;
 
 /**
  * Update patterns list with new/updated pattern info
@@ -230,4 +269,53 @@ export async function clearAllPatterns(): Promise<void> {
     console.error('Error clearing patterns:', error);
     throw new Error('Failed to clear patterns');
   }
+}
+
+const STASH_STORAGE_KEY = '@mualina_user_stash';
+
+export interface StashItem {
+  brand: string;
+  code: string;
+  name: string;
+  rgb: number[];
+  skeins: number; // e.g. 1.0, 2.5
+  assigned_wip?: string; // name or id of project
+}
+
+export async function getUserStash(): Promise<Record<string, StashItem>> {
+  try {
+    const data = await AsyncStorage.getItem(STASH_STORAGE_KEY);
+    if (!data) {
+      // Default initial stash with popular DMC threads
+      return {
+        'DMC_310': { brand: 'DMC', code: '310', name: 'Black', rgb: [0, 0, 0], skeins: 3 },
+        'DMC_666': { brand: 'DMC', code: '666', name: 'Bright Red', rgb: [227, 28, 61], skeins: 1.5 },
+        'DMC_Blanc': { brand: 'DMC', code: 'Blanc', name: 'White', rgb: [255, 255, 255], skeins: 2 },
+        'DMC_415': { brand: 'DMC', code: '415', name: 'Pearl Gray', rgb: [211, 211, 214], skeins: 1 },
+      };
+    }
+    return JSON.parse(data);
+  } catch (e) {
+    console.warn('Error loading stash:', e);
+    return {};
+  }
+}
+
+export async function saveUserStash(stash: Record<string, StashItem>): Promise<void> {
+  try {
+    await AsyncStorage.setItem(STASH_STORAGE_KEY, JSON.stringify(stash));
+  } catch (e) {
+    console.error('Error saving stash:', e);
+  }
+}
+
+export async function addToStash(item: StashItem): Promise<void> {
+  const current = await getUserStash();
+  const key = `${item.brand}_${item.code}`;
+  if (current[key]) {
+    current[key].skeins = Math.round((current[key].skeins + item.skeins) * 10) / 10;
+  } else {
+    current[key] = item;
+  }
+  await saveUserStash(current);
 }

@@ -26,9 +26,8 @@ service firebase.storage {
     
     // User uploads (images for conversion)
     match /uploads/{userId}/{imageId} {
-      allow read: if isAuthenticated() && isOwner(userId);
-      allow write: if isAuthenticated() && 
-                      isOwner(userId) && 
+      allow read: if (isAuthenticated() && isOwner(userId)) || userId == 'anon';
+      allow write: if ((isAuthenticated() && isOwner(userId)) || userId == 'anon') && 
                       isImage() && 
                       isValidSize();
       allow delete: if isAuthenticated() && isOwner(userId);

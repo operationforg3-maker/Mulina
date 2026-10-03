@@ -86,11 +86,24 @@ class ApiService {
    * Get available threads
    */
   async getThreads(brand?: string): Promise<Thread[]> {
-    const response = await axios.get<Thread[]>(
-      `${this.baseUrl}/api/v1/threads`,
-      { params: { brand } }
-    );
-    return response.data;
+    try {
+      const response = await axios.get<any>(
+        `${this.baseUrl}/api/v1/threads`,
+        { params: { brand } }
+      );
+      const rawList = Array.isArray(response.data) ? response.data : (response.data?.threads || []);
+      return rawList.map((t: any) => ({
+        threadId: t.threadId || t.thread_id || `${t.brand}_${t.color_code || t.colorCode}`,
+        brand: t.brand || 'DMC',
+        colorCode: t.colorCode || t.color_code || '',
+        colorName: t.colorName || t.color_name || `Kolor ${t.colorCode || t.color_code}`,
+        rgb: t.rgb || t.rgb_values || [0, 0, 0],
+        hexColor: t.hexColor || t.hex_color || '#888888',
+      }));
+    } catch (err) {
+      console.warn('Failed to fetch threads from API, using fallback:', err);
+      return [];
+    }
   }
 
   /**

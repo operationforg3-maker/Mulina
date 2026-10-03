@@ -1,0 +1,31 @@
+thread_id,brand,color_code,color_name,r,g,b
+ariadna_101,Ariadna,101,White,255,255,255
+ariadna_102,Ariadna,102,Ecru,245,237,223
+ariadna_103,Ariadna,103,Light Yellow,255,250,205
+ariadna_104,Ariadna,104,Pale Yellow,255,243,176
+ariadna_105,Ariadna,105,Bright Yellow,255,230,100
+ariadna_106,Ariadna,106,Golden Yellow,255,200,50
+ariadna_107,Ariadna,107,Deep Yellow,230,180,40
+ariadna_108,Ariadna,108,Orange Yellow,255,165,45
+ariadna_109,Ariadna,109,Light Orange,255,200,120
+ariadna_110,Ariadna,110,Medium Orange,255,140,70
+ariadna_111,Ariadna,111,Bright Orange,255,100,50
+ariadna_112,Ariadna,112,Dark Orange,230,80,40
+ariadna_113,Ariadna,113,Coral,255,127,80
+ariadna_114,Ariadna,114,Salmon,250,128,114
+ariadna_115,Ariadna,115,Light Salmon,255,160,122
+ariadna_116,Ariadna,116,Peach,255,218,185
+ariadna_117,Ariadna,117,Light Peach,255,228,196
+ariadna_118,Ariadna,118,Pink,255,192,203
+ariadna_119,Ariadna,119,Light Pink,255,182,193
+ariadna_120,Ariadna,120,Hot Pink,255,105,180
+ariadna_121,Ariadna,121,Deep Pink,255,20,147
+ariadna_122,Ariadna,122,Rose,220,20,60
+ariadna_123,Ariadna,123,Light Rose,255,160,180
+ariadna_124,Ariadna,124,Medium Rose,240,128,160
+ariadna_125,Ariadna,125,Dark Rose,200,80,120
+ariadna_126,Ariadna,126,Red,255,0,0
+ariadna_127,Ariadna,127,Bright Red,237,28,36
+ariadna_128,Ariadna,128,Dark Red,180,0,0
+ariadna_129,Ariadna,129,Burgundy,128,0,32
+ariadna_130,Ariadna,130,Wine,114,47,55

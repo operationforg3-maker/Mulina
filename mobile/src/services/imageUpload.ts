@@ -11,8 +11,8 @@ export async function uploadImageToFirebase(localUri: string, userId: string = '
   const storage = firebaseStorage();
   if (!storage) throw new Error('Firebase Storage not initialized');
 
-  // Generate unique filename
-  const filename = `${userId}/images/${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
+  // Generate unique filename matching storage.rules (/uploads/{userId}/{imageId})
+  const filename = `uploads/${userId}/${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
   const storageRef = ref(storage, filename);
 
   // Fetch the file as blob

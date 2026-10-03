@@ -154,7 +154,9 @@ export default function PatternEditorScreen() {
 
   // Initialize pattern & progress
   useEffect(() => {
-    if (!initialPattern && patternId) {
+    if (initialPattern) {
+      setPattern(initialPattern);
+    } else if (patternId) {
       (async () => {
         setLoading(true);
         const saved = await loadPatternFromStorage(patternId);

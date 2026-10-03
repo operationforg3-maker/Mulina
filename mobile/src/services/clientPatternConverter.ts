@@ -35,20 +35,57 @@ function clamp(val: number, min: number, max: number): number {
 }
 
 /**
- * Loads an image URL/dataURI into an HTMLImageElement
+ * Loads an image URL/dataURI into an HTMLImageElement safely without tainting canvas
  */
-function loadImage(uri: string): Promise<HTMLImageElement> {
+async function loadImage(uri: string): Promise<HTMLImageElement> {
+  let effectiveSrc = uri;
+
+  // On Web, if it's an external HTTP/HTTPS URL, try fetching as Blob -> DataURL
+  // to guarantee that HTML5 Canvas never gets tainted by cross-origin security rules!
+  if (typeof window !== 'undefined' && (uri.startsWith('http://') || uri.startsWith('https://'))) {
+    try {
+      const response = await fetch(uri, { mode: 'cors' });
+      if (response.ok) {
+        const blob = await response.blob();
+        effectiveSrc = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = () => resolve(uri);
+          reader.readAsDataURL(blob);
+        });
+      }
+    } catch {
+      // Fallback to direct URL if fetch mode cors fails
+      effectiveSrc = uri;
+    }
+  }
+
   return new Promise((resolve, reject) => {
     if (typeof Image === 'undefined') {
-      reject(new Error('HTML Image is not supported in this environment'));
+      reject(new Error('Canvas Image nie jest obsługiwany w tym środowisku'));
       return;
     }
 
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    // Only set crossOrigin on remote HTTP/HTTPS URLs, never on data: or blob:
+    if (effectiveSrc.startsWith('http://') || effectiveSrc.startsWith('https://')) {
+      img.crossOrigin = 'anonymous';
+    }
+
     img.onload = () => resolve(img);
-    img.onerror = (e) => reject(new Error('Nie udało się załadować obrazu: ' + e));
-    img.src = uri;
+    img.onerror = () => {
+      // If anonymous failed, retry once without crossOrigin
+      if (img.crossOrigin) {
+        const fallback = new Image();
+        fallback.onload = () => resolve(fallback);
+        fallback.onerror = (e) => reject(new Error('Nie udało się załadować obrazu: ' + e));
+        fallback.src = effectiveSrc;
+      } else {
+        reject(new Error('Nie udało się załadować obrazu. Upewnij się, że plik to poprawny JPG/PNG.'));
+      }
+    };
+
+    img.src = effectiveSrc;
   });
 }
 

@@ -265,19 +265,43 @@ export default function ImagePickerScreen() {
         if (asset.base64) {
           const mime = asset.uri.endsWith('.png') ? 'image/png' : 'image/jpeg';
           setSelectedImage(`data:${mime};base64,${asset.base64}`);
+        } else if (Platform.OS === 'web' && asset.uri.startsWith('blob:')) {
+          try {
+            const blobRes = await fetch(asset.uri);
+            const blob = await blobRes.blob();
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              if (typeof reader.result === 'string') {
+                setSelectedImage(reader.result);
+              } else {
+                setSelectedImage(asset.uri);
+              }
+            };
+            reader.readAsDataURL(blob);
+          } catch {
+            setSelectedImage(asset.uri);
+          }
         } else {
           setSelectedImage(asset.uri);
         }
       }
     } catch (e: any) {
       console.error('Error picking image:', e);
-      Alert.alert('Błąd', 'Nie udało się wybrać zdjęcia: ' + e.message);
+      if (Platform.OS === 'web') {
+        window.alert('Nie udało się wybrać zdjęcia: ' + e.message);
+      } else {
+        Alert.alert('Błąd', 'Nie udało się wybrać zdjęcia: ' + e.message);
+      }
     }
   };
 
   const convertImage = async () => {
     if (!selectedImage) {
-      Alert.alert('Wybierz zdjęcie', 'Wskaż motyw lub wgraj własne zdjęcie.');
+      if (Platform.OS === 'web') {
+        window.alert('Wskaż motyw lub wgraj własne zdjęcie.');
+      } else {
+        Alert.alert('Wybierz zdjęcie', 'Wskaż motyw lub wgraj własne zdjęcie.');
+      }
       return;
     }
 
@@ -304,27 +328,20 @@ export default function ImagePickerScreen() {
       await savePattern(converted);
       setLoading(false);
 
-      Alert.alert(
-        'Haft wygenerowany!',
-        `Pomyślnie przekonwertowano obraz na ${converted.grid_data.width}×${converted.grid_data.height} krz. (${converted.color_palette.length} kolorów ${threadBrand}). Otwieram tamborek!`,
-        [
-          {
-            text: 'Otwórz tamborek',
-            onPress: () =>
-              navigation.navigate('PatternEditor', {
-                patternId: converted.pattern_id,
-                pattern: converted,
-              }),
-          },
-        ]
-      );
+      // Instantly open the interactive pattern reader!
+      navigation.navigate('PatternEditor', {
+        patternId: converted.pattern_id,
+        pattern: converted,
+      });
     } catch (error: any) {
       setLoading(false);
       console.error('Conversion error:', error);
-      Alert.alert(
-        'Błąd konwersji',
-        `Nie udało się przekonwertować obrazu: ${error.message || 'Nieznany błąd'}`
-      );
+      const errMsg = `Błąd konwersji: ${error.message || 'Nieznany błąd'}`;
+      if (Platform.OS === 'web') {
+        window.alert(errMsg);
+      } else {
+        Alert.alert('Błąd konwersji', errMsg);
+      }
     } finally {
       setLoading(false);
     }

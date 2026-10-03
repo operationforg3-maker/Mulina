@@ -1,34 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ScrollView, 
-  Image, 
-  Platform 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Platform,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
-import { colors, shadows } from '../theme/colors';
-import { useResponsive } from '../theme/useResponsive';
-import PwaInstallBanner from '../components/PwaInstallBanner';
-import AndroidDownloadModal from '../components/AndroidDownloadModal';
-import { listRecentPatterns, PatternListItem } from '../services/patternStorage';
-
 import { useTheme } from '../theme/ThemeContext';
+import { useResponsive } from '../theme/useResponsive';
+import { listRecentPatterns, PatternListItem, savePattern } from '../services/patternStorage';
 import * as DocumentPicker from 'expo-document-picker';
 import { parsePatternFile } from '../services/parsers/patternParsers';
-import { savePattern } from '../services/patternStorage';
-import { Alert } from 'react-native';
+import AndroidDownloadModal from '../components/AndroidDownloadModal';
 
 export default function HomeScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Home'>>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme, themeMode, cycleTheme } = useTheme();
-  const { isTabletOrLarger, isDesktop } = useResponsive();
-  const [showAndroidModal, setShowAndroidModal] = useState(false);
+  const { isTabletOrLarger } = useResponsive();
+
   const [recentPatterns, setRecentPatterns] = useState<PatternListItem[]>([]);
+  const [showAndroidModal, setShowAndroidModal] = useState(false);
   const [importing, setImporting] = useState(false);
 
   useEffect(() => {
@@ -70,12 +66,16 @@ export default function HomeScreen() {
         await savePattern(parseRes.pattern);
         setImporting(false);
         Alert.alert(
-          "Wczytano pomyślnie!",
-          `Plik ${file.name} został zaimportowany (${parseRes.pattern.grid_data.width}x${parseRes.pattern.grid_data.height} krz., ${parseRes.pattern.color_palette.length} kolorów).`,
+          'Wczytano pomyślnie!',
+          `Plik ${file.name} został zaimportowany (${parseRes.pattern.grid_data.width}×${parseRes.pattern.grid_data.height} krz., ${parseRes.pattern.color_palette.length} kolorów).`,
           [
             {
               text: 'Otwórz w edytorze',
-              onPress: () => navigation.navigate('PatternEditor', { patternId: parseRes.pattern!.pattern_id, pattern: parseRes.pattern }),
+              onPress: () =>
+                navigation.navigate('PatternEditor', {
+                  patternId: parseRes.pattern!.pattern_id,
+                  pattern: parseRes.pattern,
+                }),
             },
           ]
         );
@@ -95,251 +95,265 @@ export default function HomeScreen() {
     return '🔴 Ochrona';
   };
 
+  // Active WIP project: first item from storage or demo
+  const activeWip = recentPatterns.length > 0 ? recentPatterns[0] : null;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
+      {/* Top App Header */}
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.surfaceBorder }]}>
+        <View style={styles.headerLeft}>
+          <View style={[styles.logoBadge, { backgroundColor: theme.primary }]}>
+            <Text style={{ fontSize: 20 }}>🧵</Text>
+          </View>
+          <View>
+            <Text style={[styles.brandTitle, { color: theme.textPrimary }]}>Mu'alina</Text>
+            <Text style={[styles.brandSubtitle, { color: theme.textSecondary }]}>Pracownia & Tamborek</Text>
+          </View>
+        </View>
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={[styles.themeBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}
+            onPress={cycleTheme}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.themeBtnText, { color: theme.textPrimary }]}>{getThemeIcon()}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.streakBtn, { backgroundColor: '#FFF3E0', borderColor: '#FFE0B2' }]}
+            onPress={() => navigation.navigate('Profile')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.streakBtnText}>🔥 7 dni</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.avatarBtn, { backgroundColor: theme.primaryLight, borderColor: theme.primaryBorder }]}
+            onPress={() => navigation.navigate('Profile')}
+            activeOpacity={0.8}
+          >
+            <Text style={{ fontSize: 16 }}>👩‍🎨</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, isTabletOrLarger && styles.tabletScrollContent]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.mainWrapper, isTabletOrLarger && styles.tabletContainer]}>
-          
-          {/* Header Banner - Cozy Embroidery Workshop Atmosphere */}
-          <View style={[styles.heroHeader, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
-            <View style={styles.heroTopRow}>
-              <View style={styles.logoRow}>
-                <View style={[styles.logoBadge, { backgroundColor: theme.primary }]}>
-                  <Text style={styles.logoEmoji}>🧵</Text>
-                </View>
-                <View>
-                  <Text style={[styles.appTitle, { color: theme.textPrimary }]}>Mu'alina</Text>
-                  <Text style={[styles.appTagline, { color: theme.textSecondary }]}>Twój cyfrowy tamborek & konwerter wzorów</Text>
-                </View>
-              </View>
+        {/* Welcome Greeting */}
+        <View style={styles.greetingSection}>
+          <Text style={[styles.greetingTitle, { color: theme.textPrimary }]}>Witaj z powrotem! ✨</Text>
+          <Text style={[styles.greetingSubtitle, { color: theme.textSecondary }]}>
+            Dziś wyhaftowano 260 krzyżyków. Tamborek czeka na kolejną nitkę!
+          </Text>
+        </View>
 
-              <View style={styles.headerControlsRow}>
-                <TouchableOpacity 
-                  style={[styles.themePill, { backgroundColor: themeMode === 'cozy' ? '#FCE4EC' : theme.backgroundAlt }]}
-                  onPress={cycleTheme}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.themePillText, { color: theme.textPrimary }]}>{getThemeIcon()}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.statusPill, { backgroundColor: '#FFF3E0', borderColor: '#FFE0B2' }]}
-                  onPress={() => navigation.navigate('Profile')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.streakText}>🔥 7 dni</Text>
-                </TouchableOpacity>
-              </View>
+        {/* HERO CARD: Current Active WIP Tamborek */}
+        <View style={[styles.heroCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+          <View style={styles.heroHeaderRow}>
+            <View style={styles.wipTag}>
+              <View style={styles.wipDot} />
+              <Text style={styles.wipTagText}>AKTUALNIE NA TAMBORKU</Text>
             </View>
-
-            <Text style={[styles.heroDescription, { color: theme.textSecondary }]}>
-              Kompleksowa aplikacja dla pasjonatów haftu. Otwieraj schematy .saga, .xsd, .pat, .oxs, .pdf, konwertuj zdjęcia z AI, kontroluj zapasy mulin i zaznaczaj postępy gestami.
+            <Text style={[styles.wipTimeLeft, { color: theme.textSecondary }]}>
+              {activeWip ? `Zaktualizowano: ${new Date(activeWip.updated_at).toLocaleDateString('pl-PL')}` : 'Aida 14ct • 16 kolorów DMC'}
             </Text>
           </View>
 
-          {/* PWA & Install Banner */}
-          <PwaInstallBanner onOpenAndroidModal={() => setShowAndroidModal(true)} />
-
-          {/* Primary Action Hero Card - Photo to Pattern AI */}
-          <TouchableOpacity
-            style={[styles.primaryActionCard, isTabletOrLarger && styles.primaryActionCardTablet]}
-            onPress={() => navigation.navigate('ImagePicker')}
-            activeOpacity={0.9}
-          >
-            <View style={styles.primaryActionIconBox}>
-              <Text style={styles.primaryActionEmoji}>📸</Text>
+          <View style={styles.heroBodyRow}>
+            <View style={[styles.heroThumb, { backgroundColor: theme.backgroundAlt }]}>
+              <Text style={{ fontSize: 44 }}>{activeWip ? '🪡' : '🌹'}</Text>
             </View>
-
-            <View style={styles.primaryActionContent}>
-              <View style={styles.badgeRow}>
-                <View style={styles.newBadge}>
-                  <Text style={styles.newBadgeText}>AI PHOTO CONVERTER</Text>
-                </View>
-                <Text style={styles.primaryActionDmc}>DMC • Anchor • Ariadna • CXC</Text>
-              </View>
-              <Text style={styles.primaryActionTitle}>Przekonwertuj zdjęcie na wzór haftu</Text>
-              <Text style={styles.primaryActionSubtitle}>
-                Wybierz grafikę z telefonu. Algorytm dopasuje gęstość kanwy (Aida 11-18ct, Evenweave 28-32ct), skompresuje paletę barw i usunie confetti.
+            <View style={styles.heroDetails}>
+              <Text style={[styles.heroPatternName, { color: theme.textPrimary }]} numberOfLines={1}>
+                {activeWip ? activeWip.name : 'Czerwona Róża (Wzór demonstracyjny)'}
               </Text>
-            </View>
+              <Text style={[styles.heroPatternMeta, { color: theme.textSecondary }]}>
+                {activeWip
+                  ? `${activeWip.width_stitches}×${activeWip.height_stitches} krzyżyków • ${activeWip.color_count} kolorów DMC`
+                  : '32×32 krzyżyków • Gesty 1/2 palce • Backstitch • Parking'}
+              </Text>
 
-            <View style={styles.primaryActionArrowBtn}>
-              <Text style={styles.arrowIcon}>➔</Text>
+              {/* Progress Bar */}
+              <View style={styles.progressRow}>
+                <View style={[styles.progressTrack, { backgroundColor: theme.backgroundAlt }]}>
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: `${activeWip ? Math.max(activeWip.progress_percent, 5) : 34}%`,
+                        backgroundColor: theme.primary,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.progressValText, { color: theme.primary }]}>
+                  {activeWip ? `${activeWip.progress_percent}%` : '34%'}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Action Button: Kontynuuj Haftowanie */}
+          <TouchableOpacity
+            style={[styles.resumeBtn, { backgroundColor: theme.primary }]}
+            onPress={() =>
+              navigation.navigate('PatternEditor', {
+                patternId: activeWip ? activeWip.pattern_id : 'demo',
+              })
+            }
+            activeOpacity={0.88}
+          >
+            <Text style={styles.resumeBtnText}>Kontynuuj haftowanie ➔</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick Actions Grid */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Szybki Start & Narzędzia</Text>
+        </View>
+
+        <View style={styles.quickGrid}>
+          <TouchableOpacity
+            style={[styles.quickCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}
+            onPress={() => navigation.navigate('ImagePicker')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.quickIconCircle, { backgroundColor: '#FCE4EC' }]}>
+              <Text style={{ fontSize: 24 }}>📸</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.quickTitle, { color: theme.textPrimary }]}>Nowy ze zdjęcia</Text>
+              <Text style={[styles.quickDesc, { color: theme.textSecondary }]}>AI Photo Converter (DMC/Anchor)</Text>
             </View>
           </TouchableOpacity>
 
-          {/* Direct File Import Banner (.saga, .xsd, .pat, .oxs, .pdf) */}
           <TouchableOpacity
-            style={[styles.importBannerCard, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}
+            style={[styles.quickCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}
             onPress={handleDirectFileImport}
             activeOpacity={0.85}
           >
-            <View style={styles.importIconCircle}>
+            <View style={[styles.quickIconCircle, { backgroundColor: '#EDE7F6' }]}>
               <Text style={{ fontSize: 24 }}>📂</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={[styles.importTitle, { color: theme.textPrimary }]}>Wgraj gotowy plik schematu</Text>
-                <View style={styles.formatTag}><Text style={styles.formatTagText}>.SAGA</Text></View>
-                <View style={styles.formatTag}><Text style={styles.formatTagText}>.XSD</Text></View>
-                <View style={styles.formatTag}><Text style={styles.formatTagText}>.PDF</Text></View>
-              </View>
-              <Text style={[styles.importSubtitle, { color: theme.textSecondary }]}>
-                {importing ? 'Trwa wczytywanie i parsowanie pliku...' : 'Obsługa formatów Cross Stitch Saga, Pattern Maker, PCStitch, OpenXStitch i skanów PDF z Grid Alignment.'}
+              <Text style={[styles.quickTitle, { color: theme.textPrimary }]}>Wgraj schemat</Text>
+              <Text style={[styles.quickDesc, { color: theme.textSecondary }]}>
+                {importing ? 'Wczytywanie...' : '.saga, .xsd, .pat, .oxs, .pdf'}
               </Text>
             </View>
-            <Text style={[styles.importActionText, { color: theme.primary }]}>Wybierz plik ➔</Text>
           </TouchableOpacity>
 
-          {/* Tablet Quick Action Grid - 2 or 4 Columns */}
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Pracownia & Narzędzia</Text>
-            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>Wszystko w jednym miejscu</Text>
+          <TouchableOpacity
+            style={[styles.quickCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}
+            onPress={() => navigation.navigate('Inventory')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.quickIconCircle, { backgroundColor: '#FFF3E0' }]}>
+              <Text style={{ fontSize: 24 }}>🧶</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.quickTitle, { color: theme.textPrimary }]}>Zapas Nici & Skaner</Text>
+              <Text style={[styles.quickDesc, { color: theme.textSecondary }]}>Baza 10k kolorów i kody kreskowe</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.quickCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}
+            onPress={() => navigation.navigate('Marketplace')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.quickIconCircle, { backgroundColor: '#E8F5E9' }]}>
+              <Text style={{ fontSize: 24 }}>🎨</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.quickTitle, { color: theme.textPrimary }]}>Odkryj Wzory</Text>
+              <Text style={[styles.quickDesc, { color: theme.textSecondary }]}>Marketplace z licencją DRM</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Weekly Streaks Section */}
+        <View style={[styles.streakWidget, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+          <View style={styles.streakTopRow}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ fontSize: 20 }}>🔥</Text>
+              <Text style={[styles.streakWidgetTitle, { color: theme.textPrimary }]}>
+                Twoja Seria Haftowania
+              </Text>
+            </View>
+            <Text style={[styles.streakDaysCount, { color: theme.primary }]}>7 dni z rzędu!</Text>
           </View>
 
-          <View style={[styles.gridContainer, isTabletOrLarger && styles.gridContainerTablet]}>
-            
-            {/* Profile & Streaks */}
-            <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }, isTabletOrLarger && styles.actionCardTablet]}
-              onPress={() => navigation.navigate('Profile')}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.actionIconWrapper, { backgroundColor: '#FCE4EC' }]}>
-                <Text style={styles.actionCardEmoji}>🔥</Text>
+          <View style={styles.daysRow}>
+            {[
+              { day: 'Pn', done: true },
+              { day: 'Wt', done: true },
+              { day: 'Śr', done: true },
+              { day: 'Cz', done: true },
+              { day: 'Pt', done: true },
+              { day: 'So', done: true },
+              { day: 'Nd', done: true, today: true },
+            ].map((item, idx) => (
+              <View key={idx} style={styles.dayCol}>
+                <View
+                  style={[
+                    styles.dayBadge,
+                    {
+                      backgroundColor: item.done ? theme.primary : theme.backgroundAlt,
+                      borderColor: item.today ? theme.primaryDark : 'transparent',
+                    },
+                  ]}
+                >
+                  <Text style={{ color: item.done ? '#FFFFFF' : theme.textMuted, fontSize: 13, fontWeight: '800' }}>
+                    ✓
+                  </Text>
+                </View>
+                <Text style={[styles.dayText, { color: item.today ? theme.primary : theme.textSecondary }]}>
+                  {item.day}
+                </Text>
               </View>
-              <View style={styles.actionCardTextWrap}>
-                <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Mój Profil & Postępy</Text>
-                <Text style={[styles.actionCardDesc, { color: theme.textSecondary }]}>Seria haftowania, odznaki i pastelowa relacja na Insta/TikTok</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Inventory */}
-            <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }, isTabletOrLarger && styles.actionCardTablet]}
-              onPress={() => navigation.navigate('Inventory')}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.actionIconWrapper, { backgroundColor: '#FFF3E0' }]}>
-                <Text style={styles.actionCardEmoji}>🧶</Text>
-              </View>
-              <View style={styles.actionCardTextWrap}>
-                <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Zapas Mulin & Skaner</Text>
-                <Text style={[styles.actionCardDesc, { color: theme.textSecondary }]}>Katalog pasemek, skaner kodów kreskowych i przypisywanie do WIP</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Marketplace */}
-            <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }, isTabletOrLarger && styles.actionCardTablet]}
-              onPress={() => navigation.navigate('Marketplace')}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.actionIconWrapper, { backgroundColor: '#F3E5F5' }]}>
-                <Text style={styles.actionCardEmoji}>🎨</Text>
-              </View>
-              <View style={styles.actionCardTextWrap}>
-                <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Marketplace Wzorów</Text>
-                <Text style={[styles.actionCardDesc, { color: theme.textSecondary }]}>Oficjalne wzory projektantów z Instant Import i DRM</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* FAQ */}
-            <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }, isTabletOrLarger && styles.actionCardTablet]}
-              onPress={() => navigation.navigate('FAQ')}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.actionIconWrapper, { backgroundColor: '#E8F5E9' }]}>
-                <Text style={styles.actionCardEmoji}>❓</Text>
-              </View>
-              <View style={styles.actionCardTextWrap}>
-                <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Poradnik & Gesty</Text>
-                <Text style={[styles.actionCardDesc, { color: theme.textSecondary }]}>Instrukcja gestów czytnika, parking mode i tabela kanw</Text>
-              </View>
-            </TouchableOpacity>
+            ))}
           </View>
+        </View>
 
-          {/* Quick Demo Pattern / Recent Patterns Section */}
-          <View style={styles.recentSection}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Twoje Wzory & Szybki start</Text>
-              <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>Kontynuuj rozpoczęty haft lub wypróbuj demo</Text>
+        {/* Other Recent WIP Projects */}
+        {recentPatterns.length > 1 && (
+          <View style={styles.otherWipSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Inne Rozpoczęte Wzory</Text>
             </View>
 
-            {/* Render saved user patterns if any */}
-            {recentPatterns.length > 0 && recentPatterns.map(pat => (
+            {recentPatterns.slice(1, 4).map((pat) => (
               <TouchableOpacity
                 key={pat.pattern_id}
-                style={[styles.demoCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder, marginBottom: 12 }, isTabletOrLarger && styles.demoCardTablet]}
+                style={[styles.smallWipCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}
                 onPress={() => navigation.navigate('PatternEditor', { patternId: pat.pattern_id })}
                 activeOpacity={0.85}
               >
-                <View style={[styles.demoThumb, { backgroundColor: theme.backgroundAlt }]}>
-                  <Text style={{ fontSize: 28 }}>🪡</Text>
+                <View style={[styles.smallWipThumb, { backgroundColor: theme.backgroundAlt }]}>
+                  <Text style={{ fontSize: 24 }}>🪡</Text>
                 </View>
-                <View style={styles.demoInfo}>
-                  <View style={styles.badgeRow}>
-                    <View style={[styles.newBadge, { backgroundColor: '#E8F5E9' }]}>
-                      <Text style={[styles.newBadgeText, { color: '#2E7D32' }]}>{pat.progress_percent}% WYHAFTOWANE</Text>
-                    </View>
-                    <Text style={[styles.demoDetails, { color: theme.textSecondary }]}>{pat.width_stitches}x{pat.height_stitches} krz. • {pat.color_count} kol.</Text>
-                  </View>
-                  <Text style={[styles.demoTitle, { color: theme.textPrimary }]}>{pat.name}</Text>
-                  <Text style={[styles.demoSubtitle, { color: theme.textSecondary }]}>
-                    Zaktualizowano: {new Date(pat.updated_at).toLocaleDateString('pl-PL')}
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.smallWipTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+                    {pat.name}
+                  </Text>
+                  <Text style={[styles.smallWipMeta, { color: theme.textSecondary }]}>
+                    {pat.width_stitches}×{pat.height_stitches} krz. • {pat.progress_percent}% wyhaftowane
                   </Text>
                 </View>
-                <View style={[styles.openBtn, { backgroundColor: theme.primary }]}>
-                  <Text style={styles.openBtnText}>Otwórz ➔</Text>
-                </View>
+                <Text style={[styles.smallWipArrow, { color: theme.primary }]}>➔</Text>
               </TouchableOpacity>
             ))}
-
-            <TouchableOpacity
-              style={[styles.demoCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }, isTabletOrLarger && styles.demoCardTablet]}
-              onPress={() => navigation.navigate('PatternEditor', { patternId: 'demo' })}
-              activeOpacity={0.85}
-            >
-              <View style={styles.demoThumb}>
-                <Text style={{ fontSize: 36 }}>🌹</Text>
-              </View>
-              <View style={styles.demoInfo}>
-                <View style={styles.badgeRow}>
-                  <View style={[styles.newBadge, { backgroundColor: '#E8F5E9' }]}>
-                    <Text style={[styles.newBadgeText, { color: '#2E7D32' }]}>GOTOWY DO HAFTOWANIA</Text>
-                  </View>
-                  <Text style={[styles.demoDetails, { color: theme.textSecondary }]}>Aida 14ct • 16 kolorów DMC</Text>
-                </View>
-                <Text style={[styles.demoTitle, { color: theme.textPrimary }]}>Czerwona Róża (Wzór demonstracyjny)</Text>
-                <Text style={[styles.demoSubtitle, { color: theme.textSecondary }]}>
-                  Przetestuj interaktywny tamborek: gesty 1-palec zaznaczanie, 2-palce pan/zoom, parking mode, warstwę backstitch i zakupy 1-klik.
-                </Text>
-              </View>
-              <View style={[styles.openBtn, { backgroundColor: theme.primary }]}>
-                <Text style={styles.openBtnText}>Otwórz edytor ➔</Text>
-              </View>
-            </TouchableOpacity>
           </View>
-
-          {/* Footer Info */}
-          <View style={styles.footerNote}>
-            <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-              🌸 Mu'alina • Nowoczesna aplikacja do haftu krzyżykowego i płaskiego (iOS, iPadOS, Android, Web)
-            </Text>
-          </View>
-
-        </View>
+        )}
       </ScrollView>
 
-      {/* Android PWA Download Modal */}
-      <AndroidDownloadModal 
-        visible={showAndroidModal} 
-        onClose={() => setShowAndroidModal(false)} 
-      />
+      {/* Android Download Modal */}
+      <AndroidDownloadModal visible={showAndroidModal} onClose={() => setShowAndroidModal(false)} />
     </View>
   );
 }
@@ -347,365 +361,299 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  mainWrapper: {
-    width: '100%',
-    alignSelf: 'center',
-  },
-  tabletContainer: {
-    maxWidth: 1040,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-  },
-  heroHeader: {
-    backgroundColor: colors.surface,
-    padding: 24,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    marginBottom: 20,
-    ...shadows.card,
-  },
-  heroTopRow: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
   },
-  logoRow: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   logoBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primaryLight,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.primaryBorder,
   },
-  logoEmoji: {
-    fontSize: 26,
-  },
-  appTitle: {
-    fontSize: 24,
+  brandTitle: {
+    fontSize: 18,
     fontWeight: '800',
-    color: colors.primaryDark,
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
-  appTagline: {
-    fontSize: 13,
-    color: colors.textSecondary,
+  brandSubtitle: {
+    fontSize: 11,
     marginTop: 1,
   },
-  headerControlsRow: {
+  headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  themePill: {
-    paddingVertical: 6,
+  themeBtn: {
     paddingHorizontal: 10,
-    borderRadius: 16,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
   },
-  themePillText: {
-    fontSize: 12,
+  themeBtnText: {
+    fontSize: 11,
     fontWeight: '700',
   },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF3E0',
+  streakBtn: {
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    gap: 6,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#FFE0B2',
   },
-  streakText: {
-    fontSize: 12,
+  streakBtnText: {
+    fontSize: 11,
     fontWeight: '800',
     color: '#E65100',
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.sage,
-  },
-  statusPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.sageDark,
-  },
-  heroDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 21,
-  },
-  importBannerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginBottom: 20,
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: 12,
-  },
-  importIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#EDE7F6',
+  avatarBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
   },
-  importTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  importSubtitle: {
-    fontSize: 11,
-    marginTop: 2,
-    lineHeight: 15,
-  },
-  importActionText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  formatTag: {
-    backgroundColor: '#E8EAF6',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  formatTagText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#3949AB',
-  },
-  primaryActionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    marginHorizontal: 16,
-    marginBottom: 24,
+  scrollContent: {
     padding: 20,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: colors.primaryBorder,
-    ...shadows.cardHover,
-    gap: 16,
+    paddingBottom: 40,
   },
-  primaryActionCardTablet: {
-    marginHorizontal: 0,
-    padding: 26,
+  tabletScrollContent: {
+    maxWidth: 900,
+    alignSelf: 'center',
+    width: '100%',
   },
-  primaryActionIconBox: {
-    width: 68,
-    height: 68,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.primaryBorder,
+  greetingSection: {
+    marginBottom: 18,
   },
-  primaryActionEmoji: {
-    fontSize: 34,
-  },
-  primaryActionContent: {
-    flex: 1,
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  newBadge: {
-    backgroundColor: colors.primaryLight,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.primaryBorder,
-  },
-  newBadgeText: {
-    fontSize: 10,
+  greetingTitle: {
+    fontSize: 24,
     fontWeight: '800',
-    color: colors.primaryDark,
-    letterSpacing: 0.5,
+    letterSpacing: -0.5,
   },
-  primaryActionDmc: {
-    fontSize: 12,
-    color: colors.textMuted,
-    fontWeight: '600',
-  },
-  primaryActionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  primaryActionSubtitle: {
+  greetingSubtitle: {
     fontSize: 13,
-    color: colors.textSecondary,
+    marginTop: 4,
     lineHeight: 18,
   },
-  primaryActionArrowBtn: {
-    width: 44,
-    height: 44,
+  heroCard: {
     borderRadius: 22,
-    backgroundColor: colors.primary,
+    padding: 20,
+    borderWidth: 1,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  heroHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  wipTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 6,
+  },
+  wipDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#2E7D32',
+  },
+  wipTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#2E7D32',
+    letterSpacing: 0.4,
+  },
+  wipTimeLeft: {
+    fontSize: 11,
+  },
+  heroBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 18,
+  },
+  heroThumb: {
+    width: 76,
+    height: 76,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.glowPrimary,
   },
-  arrowIcon: {
-    fontSize: 20,
-    color: colors.textInverted,
+  heroDetails: {
+    flex: 1,
+  },
+  heroPatternName: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  heroPatternMeta: {
+    fontSize: 12,
+    marginBottom: 10,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  progressTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: 8,
+    borderRadius: 4,
+  },
+  progressValText: {
+    fontSize: 13,
+    fontWeight: '800',
+    width: 40,
+    textAlign: 'right',
+  },
+  resumeBtn: {
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resumeBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '700',
   },
-  sectionHeaderRow: {
-    paddingHorizontal: 16,
+  sectionHeader: {
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '800',
   },
-  sectionSubtitle: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 1,
-  },
-  gridContainer: {
-    paddingHorizontal: 16,
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
     marginBottom: 24,
   },
-  gridContainerTablet: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 0,
-    gap: 14,
-  },
-  actionCard: {
+  quickCard: {
+    width: '48%',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    padding: 16,
+    padding: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    ...shadows.card,
-    gap: 14,
+    gap: 12,
   },
-  actionCardTablet: {
-    width: '48.8%',
-  },
-  actionIconWrapper: {
-    width: 48,
-    height: 48,
+  quickIconCircle: {
+    width: 44,
+    height: 44,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  actionCardEmoji: {
-    fontSize: 24,
-  },
-  actionCardTextWrap: {
-    flex: 1,
-  },
-  actionCardTitle: {
-    fontSize: 15,
+  quickTitle: {
+    fontSize: 14,
     fontWeight: '700',
-    color: colors.textPrimary,
     marginBottom: 2,
   },
-  actionCardDesc: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    lineHeight: 16,
+  quickDesc: {
+    fontSize: 11,
+    lineHeight: 14,
   },
-  recentSection: {
-    marginBottom: 20,
-  },
-  demoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    marginHorizontal: 16,
-    padding: 18,
+  streakWidget: {
     borderRadius: 18,
+    padding: 16,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    ...shadows.card,
-    gap: 16,
+    marginBottom: 24,
   },
-  demoCardTablet: {
-    marginHorizontal: 0,
+  streakTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
   },
-  demoThumb: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: colors.background,
+  streakWidgetTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  streakDaysCount: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  daysRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dayCol: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  dayBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    borderWidth: 2,
   },
-  demoInfo: {
-    flex: 1,
-  },
-  demoDetails: {
+  dayText: {
     fontSize: 11,
-    color: colors.textMuted,
+    fontWeight: '600',
   },
-  demoTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 3,
+  otherWipSection: {
+    marginBottom: 20,
   },
-  demoSubtitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    lineHeight: 16,
-  },
-  openBtn: {
-    backgroundColor: colors.backgroundAlt,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
-  openBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primaryDark,
-  },
-  footerNote: {
+  smallWipCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 10,
+    gap: 12,
   },
-  footerText: {
+  smallWipThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  smallWipTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  smallWipMeta: {
     fontSize: 12,
-    color: colors.textMuted,
-    textAlign: 'center',
+  },
+  smallWipArrow: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginRight: 4,
   },
 });

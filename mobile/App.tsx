@@ -1,12 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './src/services/authContext';
 
 import HomeScreen from './src/screens/HomeScreen';
-import ApiTestScreen from './src/screens/ApiTestScreen';
+import PatternLibraryScreen from './src/screens/PatternLibraryScreen';
 import ImagePickerScreen from './src/screens/ImagePickerScreen';
 import PatternEditorScreen from './src/screens/PatternEditorScreen';
 import LoginScreen from './src/screens/LoginScreen';
@@ -19,9 +20,9 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 
 export type RootStackParamList = {
+  MainTabs: undefined;
   Home: undefined;
   ImagePicker: undefined;
-  ApiTest: undefined;
   PatternEditor: { patternId: string; pattern?: any };
   Export: { patternId: string };
   Login: undefined;
@@ -34,31 +35,107 @@ export type RootStackParamList = {
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator();
 
-// Placeholder screens
-const PlaceholderScreen = ({ route }: any) => {
+function MainTabs() {
+  const { theme } = useTheme();
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>
-        {route?.name || 'Screen'} - Wkrótce dostępne
-      </Text>
-    </View>
+    <Tab.Navigator
+      initialRouteName="WorkshopTab"
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: theme.surface,
+          borderTopColor: theme.surfaceBorder,
+          borderTopWidth: 1,
+          height: Platform.OS === 'ios' ? 84 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          paddingTop: 8,
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+        },
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textMuted,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+        },
+      }}
+    >
+      <Tab.Screen
+        name="WorkshopTab"
+        component={HomeScreen}
+        options={{
+          tabBarLabel: 'Pracownia',
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: focused ? 22 : 18 }}>🧵</Text>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="LibraryTab"
+        component={PatternLibraryScreen}
+        options={{
+          tabBarLabel: 'Wzory',
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: focused ? 22 : 18 }}>📁</Text>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="CreateTab"
+        component={ImagePickerScreen}
+        options={{
+          tabBarLabel: 'Nowy',
+          tabBarIcon: ({ focused }) => (
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: theme.primary,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginTop: -14,
+                shadowColor: theme.primary,
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.4,
+                shadowRadius: 6,
+                elevation: 6,
+              }}
+            >
+              <Text style={{ fontSize: 20 }}>📸</Text>
+            </View>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="StashTab"
+        component={InventoryScreen}
+        options={{
+          tabBarLabel: 'Zapas nici',
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: focused ? 22 : 18 }}>🧶</Text>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="MarketplaceTab"
+        component={MarketplaceScreen}
+        options={{
+          tabBarLabel: 'Sklep',
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: focused ? 22 : 18 }}>🎨</Text>
+          ),
+        }}
+      />
+    </Tab.Navigator>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  text: {
-    fontSize: 20,
-    color: '#6366f1',
-    fontWeight: 'bold',
-  },
-});
+}
 
 function MainNavigator() {
   const { theme, themeMode } = useTheme();
@@ -67,7 +144,7 @@ function MainNavigator() {
     <NavigationContainer>
       <StatusBar style={themeMode === 'cozy' ? 'dark' : 'light'} />
       <Stack.Navigator
-        initialRouteName="Home"
+        initialRouteName="MainTabs"
         screenOptions={{
           headerStyle: {
             backgroundColor: theme.primary,
@@ -82,67 +159,58 @@ function MainNavigator() {
           },
         }}
       >
-        <Stack.Screen 
-          name="Home" 
-          component={HomeScreen}
+        <Stack.Screen
+          name="MainTabs"
+          component={MainTabs}
           options={{ headerShown: false }}
         />
-          <Stack.Screen 
-            name="ImagePicker" 
-            component={ImagePickerScreen}
-            options={{ title: 'Nowy wzór' }}
-          />
-          <Stack.Screen 
-            name="ApiTest" 
-            component={ApiTestScreen}
-            options={{ title: 'API & Firebase Test' }}
-          />
-          <Stack.Screen 
-            name="PatternEditor" 
-            component={PatternEditorScreen}
-            options={{ title: 'Edytor wzoru' }}
-          />
-          <Stack.Screen 
-            name="Login" 
-            component={LoginScreen}
-            options={{ title: 'Logowanie Firebase' }}
-          />
-          <Stack.Screen 
-            name="Marketplace" 
-            component={MarketplaceScreen}
-            options={{ title: 'Marketplace' }}
-          />
-          <Stack.Screen 
-            name="TokenPurchase" 
-            component={TokenPurchaseScreen}
-            options={{ title: 'Kup Tokeny' }}
-          />
-          <Stack.Screen 
-            name="PatternDetail" 
-            component={PlaceholderScreen}
-            options={{ title: 'Szczegóły wzoru' }}
-          />
-          <Stack.Screen 
-            name="Export" 
-            component={PlaceholderScreen}
-            options={{ title: 'Eksport wzoru' }}
-          />
-          <Stack.Screen 
-            name="Inventory" 
-            component={InventoryScreen}
-            options={{ title: 'Inwentarz nici' }}
-          />
-          <Stack.Screen 
-            name="FAQ" 
-            component={FAQScreen}
-            options={{ title: 'FAQ' }}
-          />
-          <Stack.Screen 
-            name="Profile" 
-            component={ProfileScreen}
-            options={{ title: 'Mój Profil & Postępy' }}
-          />
-        </Stack.Navigator>
+        {/* Alias for Home -> MainTabs */}
+        <Stack.Screen
+          name="Home"
+          component={MainTabs}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PatternEditor"
+          component={PatternEditorScreen}
+          options={{ title: 'Tamborek & Edytor', headerShown: true }}
+        />
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{ title: 'Mój Profil & Grywalizacja' }}
+        />
+        <Stack.Screen
+          name="ImagePicker"
+          component={ImagePickerScreen}
+          options={{ title: 'Nowy Wzór (AI Photo Converter)' }}
+        />
+        <Stack.Screen
+          name="Inventory"
+          component={InventoryScreen}
+          options={{ title: 'Zapas Nici & Skaner' }}
+        />
+        <Stack.Screen
+          name="Marketplace"
+          component={MarketplaceScreen}
+          options={{ title: 'Marketplace Wzorów' }}
+        />
+        <Stack.Screen
+          name="TokenPurchase"
+          component={TokenPurchaseScreen}
+          options={{ title: 'Kup Tokeny' }}
+        />
+        <Stack.Screen
+          name="FAQ"
+          component={FAQScreen}
+          options={{ title: 'Poradnik & Gesty' }}
+        />
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{ title: 'Logowanie Firebase' }}
+        />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }

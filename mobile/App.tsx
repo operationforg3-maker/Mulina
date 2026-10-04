@@ -18,6 +18,7 @@ import FAQScreen from './src/screens/FAQScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 export type RootStackParamList = {
   MainTabs: undefined;
@@ -182,10 +183,12 @@ function MainNavigator() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <MainNavigator />
-      </ThemeProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ThemeProvider>
+          <MainNavigator />
+        </ThemeProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

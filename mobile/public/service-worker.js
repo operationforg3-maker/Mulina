@@ -1,51 +1,78 @@
-// Mulina PWA Service Worker
-// Offline-first caching strategy for embroidery patterns
-
-const CACHE_VERSION = 'mulina-v2';
+// Mulina PWA Service Worker - Resilient Cache & Auto-Update
+const CACHE_VERSION = 'mulina-v4-pwa-fix';
 const BASE_PATH = self.registration.scope || '/mulina/';
 
-const CACHE_ASSETS = [
-  BASE_PATH,
-  `${BASE_PATH}index.html`,
+const CORE_ASSETS = [
   `${BASE_PATH}manifest.json`,
   `${BASE_PATH}favicon.ico`,
 ];
 
-// Install service worker and cache assets
+// Install: Cache core assets and immediately activate
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_VERSION).then((cache) => {
-      console.log('[SW] Caching assets for', BASE_PATH);
-      return cache.addAll(CACHE_ASSETS).catch((err) => {
-        console.warn('[SW] Initial asset caching warning:', err);
+      console.log('[SW] Installing cache:', CACHE_VERSION);
+      return cache.addAll(CORE_ASSETS).catch((err) => {
+        console.warn('[SW] Core asset caching warning:', err);
       });
     })
   );
   self.skipWaiting();
 });
 
-// Activate service worker and clean old caches
+// Activate: Delete ALL old caches immediately to wipe out stale index.html
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_VERSION) {
-            console.log('[SW] Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
+        cacheNames.map((name) => {
+          if (name !== CACHE_VERSION) {
+            console.log('[SW] Purging stale cache:', name);
+            return caches.delete(name);
           }
         })
       );
+    }).then(() => {
+      console.log('[SW] Claiming clients for version:', CACHE_VERSION);
+      return self.clients.claim();
     })
   );
-  self.clients.claim();
 });
 
-// Fetch strategy: Cache first, fallback to network
+// Fetch Strategy:
+// 1. HTML / Navigation: ALWAYS Network-First, with cache fallback for offline mode.
+//    This guarantees users ALWAYS get the latest JS bundle hash and NEVER get trapped in stale cache!
+// 2. Static Assets (JS, CSS, PNG): Cache-First with Network fallback.
 self.addEventListener('fetch', (event) => {
-  // Only cache GET requests
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+  const isNavigate = event.request.mode === 'navigate' || 
+                     event.request.destination === 'document' ||
+                     url.pathname.endsWith('/') || 
+                     url.pathname.endsWith('index.html');
+
+  if (isNavigate) {
+    // Network-First for HTML
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_VERSION).then((cache) => {
+              cache.put(event.request, clone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(`${BASE_PATH}index.html`) || caches.match(BASE_PATH);
+        })
+    );
+    return;
+  }
+
+  // Static Assets: Cache with Network Fallback
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -53,19 +80,34 @@ self.addEventListener('fetch', (event) => {
       }
 
       return fetch(event.request).then((networkResponse) => {
-        // Cache successful requests from same origin
-        if (networkResponse.status === 200 && event.request.url.startsWith(self.location.origin)) {
-          const responseClone = networkResponse.clone();
+        // Only cache valid 200 responses from same origin
+        // IMPORTANT: Never cache text/html responses when a .js was requested!
+        if (
+          networkResponse &&
+          networkResponse.status === 200 &&
+          url.origin === self.location.origin
+        ) {
+          const contentType = networkResponse.headers.get('content-type') || '';
+          if (url.pathname.endsWith('.js') && contentType.includes('text/html')) {
+            // Server returned HTML for a missing JS file (404 redirected to index.html)
+            console.warn('[SW] Refusing to cache HTML as JS:', url.pathname);
+            return networkResponse;
+          }
+
+          const clone = networkResponse.clone();
           caches.open(CACHE_VERSION).then((cache) => {
-            cache.put(event.request, responseClone);
+            cache.put(event.request, clone);
           });
         }
         return networkResponse;
       });
-    }).catch(() => {
-      if (event.request.mode === 'navigate') {
-        return caches.match(`${BASE_PATH}index.html`) || caches.match(BASE_PATH);
-      }
     })
   );
+});
+
+// Listen for message to skip waiting
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });

@@ -24,7 +24,7 @@ with open('dist/index.html', 'r', encoding='utf-8') as f:
 # Zastąp theme-color pastelowym #D9777F
 html = html.replace('content=\"#7C3AED\"', 'content=\"#D9777F\"')
 
-# Wstrzyknij tagi PWA jeśli ich brakuje
+# Wstrzyknij tagi PWA oraz emergency recovery script jeśli ich brakuje
 pwa_tags = '''
     <!-- Mulina PWA Meta Tags -->
     <meta name=\"theme-color\" content=\"#D9777F\" />
@@ -33,6 +33,30 @@ pwa_tags = '''
     <meta name=\"apple-mobile-web-app-title\" content=\"Mulina\" />
     <link rel=\"manifest\" href=\"/mulina/manifest.json\" />
     <link rel=\"apple-touch-icon\" href=\"/mulina/icon.png\" />
+    <script>
+      (function() {
+        window.__clearCachesAndReload = function() {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              for (var i = 0; i < regs.length; i++) regs[i].unregister();
+            });
+          }
+          if ('caches' in window) {
+            caches.keys().then(function(keys) {
+              for (var i = 0; i < keys.length; i++) caches.delete(keys[i]);
+            });
+          }
+          setTimeout(function() { window.location.reload(true); }, 200);
+        };
+
+        window.addEventListener('error', function(e) {
+          var msg = (e && e.message) ? e.message : '';
+          if (msg.indexOf('<') !== -1 || msg.indexOf('MIME') !== -1 || msg.indexOf('Script') !== -1) {
+            window.__clearCachesAndReload();
+          }
+        });
+      })();
+    </script>
     <script src=\"/mulina/sw-register.js\" defer></script>
 '''
 
@@ -43,15 +67,27 @@ with open('dist/index.html', 'w', encoding='utf-8') as f:
     f.write(html)
 "
 
-# Upewnij się, że .htaccess istnieje
+# Upewnij się, że .htaccess istnieje z poprawną polityką cache i brakiem redirectu dla .js
 cat << 'HTACCESS' > dist/.htaccess
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /mulina/
   RewriteRule ^index\.html$ - [L]
+  # Nie przekierowuj brakujacych plikow statycznych JS/CSS do index.html
+  RewriteCond %{REQUEST_URI} !\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|json|map)$ [NC]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /mulina/index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  # HTML i Service Worker nigdy nie powinny byc cache'owane w pamieci przegladarki
+  <FilesMatch "\.(html|htm)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+  <FilesMatch "(service-worker\.js|sw-register\.js)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
 </IfModule>
 HTACCESS
 

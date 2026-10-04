@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -39,13 +39,13 @@ const PRESET_IMAGES = [
   },
   {
     id: 'cat',
-    name: '🐱 Rudzielec',
+    name: '🐱 Rudzielec (5:4)',
     url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=300',
     aspect: 1.25,
   },
   {
     id: 'landscape',
-    name: '🏔️ Krajobraz Górski',
+    name: '🏔️ Krajobraz (3:2 / 1.5:1)',
     url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=300',
     aspect: 0.67,
   },
@@ -95,6 +95,11 @@ export default function ImagePickerScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(PRESET_IMAGES[0].url);
   const [loading, setLoading] = useState(false);
 
+  // Proportions & Aspect Ratio Advisor State
+  const [detectedAspect, setDetectedAspect] = useState<number>(1.0);
+  const [fitMode, setFitMode] = useState<'natural' | 'contain' | 'cover'>('natural');
+  const [showAspectAdvisor, setShowAspectAdvisor] = useState<boolean>(false);
+
   // 1. Sizing Mode & Dimensions
   const [sizeMode, setSizeMode] = useState<'formats' | 'cm' | 'stitches'>('formats');
   const [formatCategory, setFormatCategory] = useState<'all' | 'frame' | 'hoop'>('all');
@@ -102,12 +107,12 @@ export default function ImagePickerScreen() {
 
   // Custom Dimensions in CM
   const [customWidthCmInput, setCustomWidthCmInput] = useState<string>('15');
-  const [customHeightCmInput, setCustomHeightCmInput] = useState<string>('20');
+  const [customHeightCmInput, setCustomHeightCmInput] = useState<string>('15');
   const [lockAspect, setLockAspect] = useState<boolean>(true);
 
   // Custom Dimensions in Stitches
   const [customWidthStitchesInput, setCustomWidthStitchesInput] = useState<string>('80');
-  const [customHeightStitchesInput, setCustomHeightStitchesInput] = useState<string>('100');
+  const [customHeightStitchesInput, setCustomHeightStitchesInput] = useState<string>('80');
 
   // Fast Presets
   const [targetWidthCm, setTargetWidthCm] = useState<number>(15);
@@ -134,6 +139,47 @@ export default function ImagePickerScreen() {
   const [brightness, setBrightness] = useState<number>(1.0);
   const [contrast, setContrast] = useState<number>(1.0);
 
+  // Automatic Image Dimension & Aspect Ratio Measurement
+  useEffect(() => {
+    if (!selectedImage) return;
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const img = new (window as any).Image();
+      img.onload = () => {
+        if (img.naturalWidth && img.naturalHeight) {
+          onImageDimensionsMeasured(img.naturalWidth, img.naturalHeight);
+        }
+      };
+      img.src = selectedImage;
+    } else {
+      Image.getSize(
+        selectedImage,
+        (w, h) => onImageDimensionsMeasured(w, h),
+        () => {}
+      );
+    }
+  }, [selectedImage]);
+
+  const onImageDimensionsMeasured = (w: number, h: number) => {
+    const ratio = h / w;
+    setCustomImageAspect(ratio);
+    setDetectedAspect(ratio);
+
+    // If ratio is visibly non-square (e.g. 1.5:1 or 0.67:1), show advisor to assist the user
+    if (Math.abs(ratio - 1.0) > 0.05) {
+      setShowAspectAdvisor(true);
+    } else {
+      setShowAspectAdvisor(false);
+    }
+
+    // Automatically recalculate target height to avoid squashing in natural mode:
+    const curW = parseFloat(customWidthCmInput) || 15;
+    setCustomHeightCmInput((curW * ratio).toFixed(1));
+
+    const curStitches = parseInt(customWidthStitchesInput, 10) || 80;
+    setCustomHeightStitchesInput(Math.round(curStitches * ratio).toString());
+  };
+
   // Helper: Stitches per cm based on Fabric type and count
   const isOverTwo = fabricType === 'evenweave' || fabricType === 'linen' || (isCustomCount && overTwoThreads);
   const effectiveCount = isOverTwo ? aidaCount / 2 : aidaCount;
@@ -154,28 +200,36 @@ export default function ImagePickerScreen() {
     let finalWidthCm = chosenFormat.widthCm;
     let finalHeightCm = chosenFormat.heightCm;
 
-    if (aspect > formatAspect) {
-      finalHeightCm = chosenFormat.heightCm;
-      finalWidthCm = chosenFormat.heightCm / aspect;
+    if (fitMode === 'contain' || fitMode === 'cover') {
+      // In contain (letterbox) or cover (crop), the canvas maintains the exact frame format
+      estWidthCm = chosenFormat.widthCm.toFixed(1);
+      estHeightCm = chosenFormat.heightCm.toFixed(1);
+      estWidthStitches = Math.max(10, Math.round(chosenFormat.widthCm * stitchesPerCm));
+      estHeightStitches = Math.max(10, Math.round(chosenFormat.heightCm * stitchesPerCm));
     } else {
-      finalWidthCm = chosenFormat.widthCm;
-      finalHeightCm = chosenFormat.widthCm * aspect;
+      // Natural mode: fit image nicely into format boundary preserving aspect ratio without distortion
+      if (aspect > formatAspect) {
+        finalHeightCm = chosenFormat.heightCm;
+        finalWidthCm = chosenFormat.heightCm / aspect;
+      } else {
+        finalWidthCm = chosenFormat.widthCm;
+        finalHeightCm = chosenFormat.widthCm * aspect;
+      }
+      estWidthCm = finalWidthCm.toFixed(1);
+      estHeightCm = finalHeightCm.toFixed(1);
+      estWidthStitches = Math.max(10, Math.round(finalWidthCm * stitchesPerCm));
+      estHeightStitches = Math.max(10, Math.round(finalHeightCm * stitchesPerCm));
     }
-
-    estWidthCm = finalWidthCm.toFixed(1);
-    estHeightCm = finalHeightCm.toFixed(1);
-    estWidthStitches = Math.max(10, Math.round(finalWidthCm * stitchesPerCm));
-    estHeightStitches = Math.max(10, Math.round(finalHeightCm * stitchesPerCm));
   } else if (sizeMode === 'cm') {
     const w = parseFloat(customWidthCmInput) || targetWidthCm || 15;
-    const h = lockAspect ? w * aspect : (parseFloat(customHeightCmInput) || w * aspect);
+    const h = (fitMode === 'natural' || lockAspect) ? w * aspect : (parseFloat(customHeightCmInput) || w * aspect);
     estWidthCm = w.toFixed(1);
     estHeightCm = h.toFixed(1);
     estWidthStitches = Math.max(10, Math.round(w * stitchesPerCm));
     estHeightStitches = Math.max(10, Math.round(h * stitchesPerCm));
   } else {
     const wStitches = parseInt(customWidthStitchesInput, 10) || targetStitches || 80;
-    const hStitches = lockAspect ? Math.round(wStitches * aspect) : (parseInt(customHeightStitchesInput, 10) || Math.round(wStitches * aspect));
+    const hStitches = (fitMode === 'natural' || lockAspect) ? Math.round(wStitches * aspect) : (parseInt(customHeightStitchesInput, 10) || Math.round(wStitches * aspect));
     estWidthStitches = Math.max(10, wStitches);
     estHeightStitches = Math.max(10, hStitches);
     estWidthCm = (estWidthStitches / stitchesPerCm).toFixed(1);
@@ -254,14 +308,6 @@ export default function ImagePickerScreen() {
 
       if (!result.canceled && result.assets && result.assets[0]) {
         const asset = result.assets[0];
-        if (asset.width && asset.height) {
-          const ratio = asset.height / asset.width;
-          setCustomImageAspect(ratio);
-          const currentW = parseFloat(customWidthCmInput) || 15;
-          setCustomHeightCmInput((currentW * ratio).toFixed(1));
-          const currentWStitches = parseInt(customWidthStitchesInput, 10) || 80;
-          setCustomHeightStitchesInput(Math.round(currentWStitches * ratio).toString());
-        }
         if (asset.base64) {
           const mime = asset.uri.endsWith('.png') ? 'image/png' : 'image/jpeg';
           setSelectedImage(`data:${mime};base64,${asset.base64}`);
@@ -322,6 +368,7 @@ export default function ImagePickerScreen() {
         heightCm: parseFloat(estHeightCm),
         canvasColor: canvasColor,
         marginCm: marginCm,
+        fitMode: fitMode,
       });
 
       try {
@@ -376,7 +423,7 @@ export default function ImagePickerScreen() {
           📸 Wybierz lub wgraj zdjęcie do konwersji
         </Text>
         <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
-          Wybierz jedną z gotowych grafik demonstracyjnych lub wgraj własne zdjęcie:
+          Wybierz jedną z gotowych grafik lub wgraj własne zdjęcie z galerii:
         </Text>
 
         <View style={styles.presetsRow}>
@@ -400,8 +447,8 @@ export default function ImagePickerScreen() {
         </View>
 
         <TouchableOpacity style={[styles.uploadButton, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]} onPress={pickImage} activeOpacity={0.85}>
-          <Text style={{ fontSize: 18, marginRight: 8 }}>🖼️</Text>
-          <Text style={[styles.uploadButtonText, { color: theme.textPrimary }]}>Wgraj własne zdjęcie z galerii</Text>
+          <Text style={{ fontSize: 18, marginRight: 8 }}>📁</Text>
+          <Text style={[styles.uploadButtonText, { color: theme.textPrimary }]}>Wgraj własne zdjęcie z galerii / dysku</Text>
         </TouchableOpacity>
 
         {selectedImage && (
@@ -409,8 +456,95 @@ export default function ImagePickerScreen() {
             <Image source={{ uri: selectedImage }} style={styles.previewImage} />
             <View style={styles.aspectBadge}>
               <Text style={styles.aspectBadgeText}>
-                Proporcja: {aspect >= 1 ? `1 : ${aspect.toFixed(2)}` : `${(1 / aspect).toFixed(2)} : 1`}
+                Proporcje: {detectedAspect > 1 ? `1 : ${detectedAspect.toFixed(2)} (pion)` : `${(1 / detectedAspect).toFixed(2)} : 1 (poziom)`}
               </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Proportions Advisor Banner (When non-square image is detected) */}
+        {showAspectAdvisor && (
+          <View style={[styles.advisorCard, { backgroundColor: theme.primaryLight, borderColor: theme.primaryBorder }]}>
+            <View style={styles.advisorHeader}>
+              <Text style={{ fontSize: 22 }}>📐</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.advisorTitle, { color: theme.primaryDark }]}>
+                  Wykryto prostokątne zdjęcie ({detectedAspect < 1 ? `${(1 / detectedAspect).toFixed(2)} : 1` : `1 : ${detectedAspect.toFixed(2)}`})
+                </Text>
+                <Text style={[styles.advisorSubtitle, { color: theme.textSecondary }]}>
+                  Wybierz jak algorytm ma dopasować kadr, aby uniknąć rozciągania:
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.advisorButtonsCol}>
+              <TouchableOpacity
+                style={[
+                  styles.advisorBtn,
+                  fitMode === 'natural' && { backgroundColor: theme.surface, borderColor: theme.primary },
+                ]}
+                onPress={() => {
+                  setFitMode('natural');
+                  setLockAspect(true);
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={{ fontSize: 18, marginRight: 8 }}>📐</Text>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.advisorBtnTitle, fitMode === 'natural' && { color: theme.primary, fontWeight: '800' }]}>
+                      Naturalny prostokąt
+                    </Text>
+                    <View style={[styles.recBadge, { backgroundColor: theme.primary }]}>
+                      <Text style={styles.recBadgeText}>Zalecane</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.advisorBtnDesc, { color: theme.textSecondary }]}>
+                    Dopasuj siatkę do zdjęcia ({estWidthStitches} × {estHeightStitches} krz. / {estWidthCm} × {estHeightCm} cm). Cały kadr, zero zniekształceń.
+                  </Text>
+                </View>
+                {fitMode === 'natural' && <Text style={{ color: theme.primary, fontWeight: '900', fontSize: 16 }}>✓</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.advisorBtn,
+                  fitMode === 'contain' && { backgroundColor: theme.surface, borderColor: theme.primary },
+                ]}
+                onPress={() => setFitMode('contain')}
+                activeOpacity={0.85}
+              >
+                <Text style={{ fontSize: 18, marginRight: 8 }}>🖼️</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.advisorBtnTitle, fitMode === 'contain' && { color: theme.primary, fontWeight: '800' }]}>
+                    Zostaw puste pola kanwy (Letterbox)
+                  </Text>
+                  <Text style={[styles.advisorBtnDesc, { color: theme.textSecondary }]}>
+                    Wpisz motyw w wybraną ramkę. Puste krawędzie wokół motywu to czysta tkanina bez haftowania.
+                  </Text>
+                </View>
+                {fitMode === 'contain' && <Text style={{ color: theme.primary, fontWeight: '900', fontSize: 16 }}>✓</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.advisorBtn,
+                  fitMode === 'cover' && { backgroundColor: theme.surface, borderColor: theme.primary },
+                ]}
+                onPress={() => setFitMode('cover')}
+                activeOpacity={0.85}
+              >
+                <Text style={{ fontSize: 18, marginRight: 8 }}>✂️</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.advisorBtnTitle, fitMode === 'cover' && { color: theme.primary, fontWeight: '800' }]}>
+                    Wypełnij i przytnij (Kadrowanie)
+                  </Text>
+                  <Text style={[styles.advisorBtnDesc, { color: theme.textSecondary }]}>
+                    Wypełnij cały format bez rozciągania pikseli, przycinając delikatnie nadmiar krawędzi.
+                  </Text>
+                </View>
+                {fitMode === 'cover' && <Text style={{ color: theme.primary, fontWeight: '900', fontSize: 16 }}>✓</Text>}
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -693,8 +827,33 @@ export default function ImagePickerScreen() {
           Wybierz gotową ramkę, tamborek lub określ własne wymiary w cm bądź ściegach:
         </Text>
 
+        {/* Fit Mode Selector Pills */}
+        <View style={[styles.fitModeRow, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}>
+          {[
+            { id: 'natural', label: '📐 Prostokąt zdjęcia', desc: 'Pełen kadr bez rozciągania' },
+            { id: 'contain', label: '🖼️ Puste pole kanwy', desc: 'Brak haftu na marginesach' },
+            { id: 'cover', label: '✂️ Przytnij krawędzie', desc: 'Wypełnij ramkę kadrując' },
+          ].map((m) => (
+            <TouchableOpacity
+              key={m.id}
+              style={[
+                styles.fitModeBtn,
+                fitMode === m.id && { backgroundColor: theme.surface, borderColor: theme.primary },
+              ]}
+              onPress={() => setFitMode(m.id as any)}
+            >
+              <Text style={[styles.fitModeBtnTitle, fitMode === m.id && { color: theme.primary, fontWeight: '800' }]}>
+                {m.label}
+              </Text>
+              <Text style={[styles.fitModeBtnDesc, { color: theme.textMuted }]}>
+                {m.desc}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {/* Sub-tabs for Sizing */}
-        <View style={[styles.tabContainer, { backgroundColor: theme.backgroundAlt }]}>
+        <View style={[styles.tabContainer, { backgroundColor: theme.backgroundAlt, marginTop: 12 }]}>
           <TouchableOpacity
             style={[styles.tab, sizeMode === 'formats' && styles.tabActive]}
             onPress={() => setSizeMode('formats')}
@@ -809,7 +968,7 @@ export default function ImagePickerScreen() {
                   onPress={() => {
                     setTargetWidthCm(val);
                     setCustomWidthCmInput(val.toString());
-                    if (lockAspect) {
+                    if (lockAspect || fitMode === 'natural') {
                       setCustomHeightCmInput((val * aspect).toFixed(1));
                     }
                   }}
@@ -838,7 +997,7 @@ export default function ImagePickerScreen() {
                         const num = parseFloat(val);
                         if (!isNaN(num) && num > 0) {
                           setTargetWidthCm(num);
-                          if (lockAspect) {
+                          if (lockAspect || fitMode === 'natural') {
                             setCustomHeightCmInput((num * aspect).toFixed(1));
                           }
                         }
@@ -849,12 +1008,12 @@ export default function ImagePickerScreen() {
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.aspectLockBtn, lockAspect && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+                  style={[styles.aspectLockBtn, (lockAspect || fitMode === 'natural') && { backgroundColor: theme.primary, borderColor: theme.primary }]}
                   onPress={() => setLockAspect(!lockAspect)}
                   activeOpacity={0.8}
                 >
                   <Text style={{ fontSize: 16 }}>{lockAspect ? '🔗' : '🔓'}</Text>
-                  <Text style={[styles.aspectLockText, lockAspect && { color: '#ffffff' }]}>
+                  <Text style={[styles.aspectLockText, (lockAspect || fitMode === 'natural') && { color: '#ffffff' }]}>
                     {lockAspect ? 'Proporcje' : 'Swobodny'}
                   </Text>
                 </TouchableOpacity>
@@ -866,7 +1025,7 @@ export default function ImagePickerScreen() {
                       style={[styles.dimTextInput, { color: theme.textPrimary }]}
                       keyboardType="numeric"
                       value={customHeightCmInput}
-                      editable={!lockAspect}
+                      editable={!lockAspect && fitMode !== 'natural'}
                       onChangeText={(val) => {
                         setCustomHeightCmInput(val);
                       }}
@@ -900,7 +1059,7 @@ export default function ImagePickerScreen() {
                   onPress={() => {
                     setTargetStitches(s.val);
                     setCustomWidthStitchesInput(s.val.toString());
-                    if (lockAspect) {
+                    if (lockAspect || fitMode === 'natural') {
                       setCustomHeightStitchesInput(Math.round(s.val * aspect).toString());
                     }
                   }}
@@ -929,7 +1088,7 @@ export default function ImagePickerScreen() {
                         const num = parseInt(val, 10);
                         if (!isNaN(num) && num > 0) {
                           setTargetStitches(num);
-                          if (lockAspect) {
+                          if (lockAspect || fitMode === 'natural') {
                             setCustomHeightStitchesInput(Math.round(num * aspect).toString());
                           }
                         }
@@ -940,12 +1099,12 @@ export default function ImagePickerScreen() {
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.aspectLockBtn, lockAspect && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+                  style={[styles.aspectLockBtn, (lockAspect || fitMode === 'natural') && { backgroundColor: theme.primary, borderColor: theme.primary }]}
                   onPress={() => setLockAspect(!lockAspect)}
                   activeOpacity={0.8}
                 >
                   <Text style={{ fontSize: 16 }}>{lockAspect ? '🔗' : '🔓'}</Text>
-                  <Text style={[styles.aspectLockText, lockAspect && { color: '#ffffff' }]}>
+                  <Text style={[styles.aspectLockText, (lockAspect || fitMode === 'natural') && { color: '#ffffff' }]}>
                     {lockAspect ? 'Proporcje' : 'Swobodny'}
                   </Text>
                 </TouchableOpacity>
@@ -957,7 +1116,7 @@ export default function ImagePickerScreen() {
                       style={[styles.dimTextInput, { color: theme.textPrimary }]}
                       keyboardType="numeric"
                       value={customHeightStitchesInput}
-                      editable={!lockAspect}
+                      editable={!lockAspect && fitMode !== 'natural'}
                       onChangeText={(val) => {
                         setCustomHeightStitchesInput(val);
                       }}
@@ -1211,7 +1370,7 @@ export default function ImagePickerScreen() {
       <View style={[styles.stickyBottomBar, { backgroundColor: theme.surface, borderTopColor: theme.surfaceBorder }]}>
         <View style={styles.summaryBadge}>
           <Text style={[styles.summaryBadgeTextBold, { color: theme.textPrimary }]}>
-            📐 {estWidthCm} × {estHeightCm} cm
+            📐 {estWidthCm} × {estHeightCm} cm • {fitMode === 'contain' ? 'Letterbox' : (fitMode === 'cover' ? 'Crop' : 'Prostokąt')}
           </Text>
           <Text style={[styles.summaryBadgeTextSub, { color: theme.textSecondary }]}>
             {estWidthStitches}×{estHeightStitches} krz. • {threadBrand} • {maxColors === 0 ? 'Bez limitu' : `${maxColors} kol.`}
@@ -1413,6 +1572,87 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 11,
     fontWeight: '600',
+  },
+  advisorCard: {
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1.5,
+    marginBottom: 12,
+    gap: 10,
+  },
+  advisorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  advisorTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  advisorSubtitle: {
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 1,
+  },
+  advisorButtonsCol: {
+    gap: 8,
+  },
+  advisorBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+  },
+  advisorBtnTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  recBadge: {
+    paddingVertical: 1,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+  },
+  recBadgeText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  advisorBtnDesc: {
+    fontSize: 10,
+    lineHeight: 14,
+    marginTop: 2,
+  },
+  fitModeRow: {
+    flexDirection: 'row',
+    gap: 6,
+    padding: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 6,
+  },
+  fitModeBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    alignItems: 'center',
+  },
+  fitModeBtnTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+    textAlign: 'center',
+  },
+  fitModeBtnDesc: {
+    fontSize: 9,
+    textAlign: 'center',
+    marginTop: 2,
   },
   filterSection: {
     marginTop: 6,

@@ -20,6 +20,7 @@ export interface ConvertOptions {
   heightCm: number;
   canvasColor?: string;
   marginCm?: number;
+  fitMode?: 'natural' | 'contain' | 'cover' | 'stretch';
 }
 
 const SYMBOLS = [
@@ -98,6 +99,8 @@ function removeConfetti(grid: number[][], width: number, height: number): number
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const current = grid[y][x];
+      if (current === -1) continue; // Keep empty margin unstitched
+
       const neighbors: Record<number, number> = {};
       let diffCount = 0;
 
@@ -106,12 +109,14 @@ function removeConfetti(grid: number[][], width: number, height: number): number
           if (dx === 0 && dy === 0) continue;
           const n = grid[y + dy][x + dx];
           if (n !== current) diffCount++;
-          neighbors[n] = (neighbors[n] || 0) + 1;
+          if (n !== -1) {
+            neighbors[n] = (neighbors[n] || 0) + 1;
+          }
         }
       }
 
       // If at least 7 of 8 neighbors are different, replace with most common neighbor
-      if (diffCount >= 7) {
+      if (diffCount >= 7 && Object.keys(neighbors).length > 0) {
         let maxCount = 0;
         let bestNeighbor = current;
         for (const [k, count] of Object.entries(neighbors)) {
@@ -146,17 +151,60 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
     heightCm,
     canvasColor = 'white',
     marginCm = 5,
+    fitMode = 'natural',
   } = options;
 
-  const w = Math.max(10, Math.min(250, targetWidth));
-  const h = Math.max(10, Math.min(250, targetHeight));
+  let w = Math.max(10, Math.min(250, targetWidth));
+  let h = Math.max(10, Math.min(250, targetHeight));
 
   // 1. Render and extract pixels using canvas
   let pixelData: Uint8ClampedArray;
   let thumbnailDataUrl: string | undefined;
+  let finalWidthCm = widthCm;
+  let finalHeightCm = heightCm;
+
+  let dx = 0;
+  let dy = 0;
+  let drawW = w;
+  let drawH = h;
 
   if (typeof document !== 'undefined') {
     const img = await loadImage(imageUri);
+    const naturalW = (img as any).naturalWidth || img.width || 100;
+    const naturalH = (img as any).naturalHeight || img.height || 100;
+    const imgRatio = naturalH / naturalW;
+
+    if (fitMode === 'natural') {
+      // Natural mode: recalculate height strictly matching photo aspect ratio
+      h = Math.max(10, Math.min(250, Math.round(w * imgRatio)));
+      drawW = w;
+      drawH = h;
+      dx = 0;
+      dy = 0;
+
+      const stitchesPerCm = aidaCount / 2.54;
+      finalWidthCm = parseFloat((w / stitchesPerCm).toFixed(1));
+      finalHeightCm = parseFloat((h / stitchesPerCm).toFixed(1));
+    } else if (fitMode === 'contain') {
+      // Letterbox mode: keep selected frame w x h, center image, leave borders unstitched
+      const targetRatio = h / w;
+      if (imgRatio > targetRatio) {
+        drawH = h;
+        drawW = Math.max(1, Math.round(h / imgRatio));
+        dx = Math.floor((w - drawW) / 2);
+        dy = 0;
+      } else {
+        drawW = w;
+        drawH = Math.max(1, Math.round(w * imgRatio));
+        dy = Math.floor((h - drawH) / 2);
+        dx = 0;
+      }
+    } else if (fitMode === 'cover') {
+      // Crop mode: fill entire w x h without stretching
+      drawW = w;
+      drawH = h;
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
@@ -166,10 +214,31 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
       throw new Error('Canvas 2D context not available');
     }
 
-    // High quality scaling
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, 0, 0, w, h);
+
+    if (fitMode === 'cover') {
+      const targetRatio = h / w;
+      let sW = naturalW;
+      let sH = naturalH;
+      let sx = 0;
+      let sy = 0;
+      if (imgRatio > targetRatio) {
+        sW = naturalW;
+        sH = Math.round(naturalW * targetRatio);
+        sy = Math.floor((naturalH - sH) / 2);
+      } else {
+        sH = naturalH;
+        sW = Math.round(naturalH / targetRatio);
+        sx = Math.floor((naturalW - sW) / 2);
+      }
+      ctx.drawImage(img, sx, sy, sW, sH, 0, 0, w, h);
+    } else if (fitMode === 'contain') {
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(img, dx, dy, drawW, drawH);
+    } else {
+      ctx.drawImage(img, 0, 0, w, h);
+    }
 
     const imgData = ctx.getImageData(0, 0, w, h);
     pixelData = imgData.data;
@@ -191,6 +260,7 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
     l: number;
     a: number;
     b_val: number;
+    isEmpty?: boolean;
   }
 
   const pixelGrid: PixelInfo[][] = [];
@@ -201,12 +271,20 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
     const row: PixelInfo[] = [];
     for (let x = 0; x < w; x++) {
       const idx = (y * w + x) * 4;
+      const a = pixelData[idx + 3];
+
+      // In contain mode, pixels outside the drawn box are marked empty unstitched
+      const isOutsideContainBox = fitMode === 'contain' && (x < dx || x >= dx + drawW || y < dy || y >= dy + drawH);
+      if (isOutsideContainBox || a === 0) {
+        row.push({ r: 255, g: 255, b: 255, l: 100, a: 0, b_val: 0, isEmpty: true });
+        continue;
+      }
+
       let r = pixelData[idx];
       let g = pixelData[idx + 1];
       let b = pixelData[idx + 2];
-      const a = pixelData[idx + 3];
 
-      // Blend transparency over canvas color
+      // Blend transparency over canvas color if semi-transparent
       if (a < 255) {
         const bgR = canvasColor === 'black' ? 0 : 255;
         const bgG = canvasColor === 'black' ? 0 : 255;
@@ -358,10 +436,17 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
 
   // 4. Construct Numeric Grid (mapping every pixel to closest thread in CIELAB space)
   let numericGrid: number[][] = [];
+  let totalStitches = 0;
+
   for (let y = 0; y < h; y++) {
     const row: number[] = [];
     for (let x = 0; x < w; x++) {
       const p = pixelGrid[y][x];
+
+      if (p.isEmpty) {
+        row.push(-1);
+        continue;
+      }
 
       let minDist = Infinity;
       let bestIdx = 0;
@@ -379,6 +464,7 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
         }
       }
       row.push(bestIdx);
+      totalStitches++;
     }
     numericGrid.push(row);
   }
@@ -398,7 +484,6 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
     delta_e: 0,
   }));
 
-  const totalStitches = w * h;
   const estimatedSkeins = Math.max(1, Math.ceil(totalStitches / 1800));
 
   const patternId = `mualina_${Date.now()}`;
@@ -419,19 +504,19 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
     dimensions: {
       width_stitches: w,
       height_stitches: h,
-      width_cm: widthCm,
-      height_cm: heightCm,
+      width_cm: finalWidthCm,
+      height_cm: finalHeightCm,
       aida_count: aidaCount,
       canvas_color: canvasColor,
       margin_cm: marginCm,
-      recommended_cut_width_cm: widthCm + marginCm * 2,
-      recommended_cut_height_cm: heightCm + marginCm * 2,
+      recommended_cut_width_cm: parseFloat((finalWidthCm + marginCm * 2).toFixed(1)),
+      recommended_cut_height_cm: parseFloat((finalHeightCm + marginCm * 2).toFixed(1)),
     },
     materials_summary: {
       total_stitches: totalStitches,
       total_skeins: estimatedSkeins,
       estimated_cost_pln: estimatedSkeins * 4.8,
-      fabric_cut_size: `${(widthCm + marginCm * 2).toFixed(1)} × ${(heightCm + marginCm * 2).toFixed(1)} cm`,
+      fabric_cut_size: `${(finalWidthCm + marginCm * 2).toFixed(1)} × ${(finalHeightCm + marginCm * 2).toFixed(1)} cm`,
       fabric_type: `Aida ${aidaCount}ct`,
       canvas_color: canvasColor,
     },

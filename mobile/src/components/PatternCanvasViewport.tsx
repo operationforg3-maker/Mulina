@@ -164,7 +164,11 @@ export default function PatternCanvasViewport({
     for (let r = startRow; r < endRow; r++) {
       for (let c = startCol; c < endCol; c++) {
         const colorIdx = grid[r]?.[c];
-        const thread = colorPalette[colorIdx] || colorPalette[0];
+        if (colorIdx === undefined || colorIdx === -1 || colorIdx === null) {
+          continue; // unstitched empty canvas margin
+        }
+        const thread = colorPalette[colorIdx];
+        if (!thread) continue;
         const isDone = completedStitches[r]?.[c];
         const isIsolated = highlightColorIndex !== null;
         const isTargetColor = highlightColorIndex === colorIdx;
@@ -505,6 +509,11 @@ export default function PatternCanvasViewport({
       const r = Math.floor((y - curPanY) / cellSize);
 
       if (r >= 0 && r < gridH && c >= 0 && c < gridW) {
+        if (grid[r][c] === -1 || grid[r][c] === undefined) {
+          // Empty unstitched canvas margin - do not toggle
+          return;
+        }
+
         const currentlyDone = completedStitches[r]?.[c] || false;
         stitchDragActionRef.current = currentlyDone ? 'unmark' : 'mark';
         visitedStitchCellsRef.current.add(`${r}_${c}`);
@@ -544,7 +553,7 @@ export default function PatternCanvasViewport({
       const c = Math.floor((x - curPanX) / cellSize);
       const r = Math.floor((y - curPanY) / cellSize);
 
-      if (r >= 0 && r < gridH && c >= 0 && c < gridW) {
+      if (r >= 0 && r < gridH && c >= 0 && c < gridW && grid[r][c] !== -1 && grid[r][c] !== undefined) {
         const key = `${r}_${c}`;
         if (!visitedStitchCellsRef.current.has(key)) {
           visitedStitchCellsRef.current.add(key);

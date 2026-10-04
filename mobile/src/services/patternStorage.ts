@@ -15,6 +15,8 @@ export interface StoredPattern {
   updated_at: string;
   thumbnail?: string; // base64 image
   image_url?: string; // Firebase Storage URL
+  favorite?: boolean;
+  tags?: string[];
   grid_data: {
     grid: number[][];
     type: string;
@@ -91,6 +93,10 @@ export interface PatternListItem {
   height_stitches: number;
   color_count: number;
   progress_percent: number;
+  favorite?: boolean;
+  tags?: string[];
+  preview_colors?: string[];
+  total_stitches?: number;
 }
 
 /**
@@ -113,7 +119,7 @@ async function pruneOldPatterns(keepCount: number = 6): Promise<void> {
 }
 
 /**
- * Save a pattern to local storage
+ * Save a pattern to local storage (safe, without destructive pruning)
  */
 export async function savePattern(pattern: StoredPattern): Promise<void> {
   try {
@@ -127,19 +133,13 @@ export async function savePattern(pattern: StoredPattern): Promise<void> {
     }
 
     const key = `${STORAGE_KEY_PREFIX}${pattern.pattern_id}`;
-    try {
-      await AsyncStorage.setItem(key, JSON.stringify(safePattern));
-    } catch (quotaErr) {
-      console.warn('AsyncStorage quota error, pruning old patterns and retrying...', quotaErr);
-      await pruneOldPatterns(4);
-      await AsyncStorage.setItem(key, JSON.stringify(safePattern));
-    }
+    await AsyncStorage.setItem(key, JSON.stringify(safePattern));
     
     // Update patterns list
     await updatePatternsList(safePattern);
   } catch (error) {
-    console.warn('Warning: Could not persist pattern to local storage (quota or private mode):', error);
-    // Graceful fallback: do NOT throw, allow navigation to PatternEditor
+    console.warn('Warning: Could not persist pattern to local storage:', error);
+    // Graceful fallback
   }
 }
 
@@ -181,6 +181,124 @@ export async function deletePattern(patternId: string): Promise<void> {
 }
 
 /**
+ * Rename an existing pattern
+ */
+export async function renamePattern(patternId: string, newName: string): Promise<StoredPattern | null> {
+  const pattern = await loadPattern(patternId);
+  if (!pattern) return null;
+  pattern.name = newName.trim();
+  pattern.updated_at = new Date().toISOString();
+  await savePattern(pattern);
+  return pattern;
+}
+
+/**
+ * Duplicate a pattern with a new ID
+ */
+export async function duplicatePattern(patternId: string): Promise<StoredPattern | null> {
+  const original = await loadPattern(patternId);
+  if (!original) return null;
+  const newId = `pat_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const clone: StoredPattern = {
+    ...JSON.parse(JSON.stringify(original)),
+    pattern_id: newId,
+    name: `${original.name} (Kopia)`,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  await savePattern(clone);
+  return clone;
+}
+
+/**
+ * Toggle favorite status of a pattern
+ */
+export async function toggleFavoritePattern(patternId: string): Promise<boolean> {
+  const pattern = await loadPattern(patternId);
+  if (!pattern) return false;
+  pattern.favorite = !pattern.favorite;
+  pattern.updated_at = new Date().toISOString();
+  await savePattern(pattern);
+  return !!pattern.favorite;
+}
+
+/**
+ * Update tags of a pattern
+ */
+export async function updatePatternTags(patternId: string, tags: string[]): Promise<void> {
+  const pattern = await loadPattern(patternId);
+  if (!pattern) return;
+  pattern.tags = tags;
+  pattern.updated_at = new Date().toISOString();
+  await savePattern(pattern);
+}
+
+/**
+ * Reset pattern progress (0% completed stitches)
+ */
+export async function resetPatternProgress(patternId: string): Promise<void> {
+  const pattern = await loadPattern(patternId);
+  if (!pattern || !pattern.grid_data) return;
+  const h = pattern.grid_data.height;
+  const w = pattern.grid_data.width;
+  pattern.progress = {
+    completed_stitches: Array(h).fill(null).map(() => Array(w).fill(false)),
+    current_color_index: 0,
+    last_worked: new Date().toISOString(),
+  };
+  if (pattern.backstitch) {
+    pattern.backstitch = pattern.backstitch.map(b => ({ ...b, completed: false }));
+  }
+  pattern.updated_at = new Date().toISOString();
+  await savePattern(pattern);
+}
+
+/**
+ * Export a single pattern as JSON file string
+ */
+export async function exportPatternJson(patternId: string): Promise<string> {
+  const pattern = await loadPattern(patternId);
+  if (!pattern) throw new Error('Nie znaleziono wzoru');
+  return JSON.stringify(pattern, null, 2);
+}
+
+/**
+ * Export full backup of all stored patterns
+ */
+export async function exportAllPatternsBackup(): Promise<string> {
+  const list = await getPatternsList();
+  const allPatterns: StoredPattern[] = [];
+  for (const item of list) {
+    const p = await loadPattern(item.pattern_id);
+    if (p) allPatterns.push(p);
+  }
+  const backup = {
+    app: "Mu'Alina",
+    version: "2.0",
+    exported_at: new Date().toISOString(),
+    patterns_count: allPatterns.length,
+    patterns: allPatterns,
+  };
+  return JSON.stringify(backup, null, 2);
+}
+
+/**
+ * Import and merge patterns from a backup JSON
+ */
+export async function importPatternsBackup(backupJson: string): Promise<number> {
+  const parsed = JSON.parse(backupJson);
+  const patternsToImport: StoredPattern[] = Array.isArray(parsed) ? parsed : (parsed.patterns || []);
+  let importedCount = 0;
+  for (const p of patternsToImport) {
+    if (p && p.pattern_id && p.grid_data && p.color_palette) {
+      await savePattern(p);
+      importedCount++;
+    }
+  }
+  return importedCount;
+}
+
+/**
  * Get list of all saved patterns
  */
 export async function getPatternsList(): Promise<PatternListItem[]> {
@@ -218,7 +336,13 @@ async function updatePatternsList(pattern: StoredPattern): Promise<void> {
       const completedCount = pattern.progress.completed_stitches.flat().filter(Boolean).length;
       progressPercent = Math.round((completedCount / totalStitches) * 100);
     }
+
+    const previewColors = (pattern.color_palette || []).slice(0, 7).map(t => `rgb(${t.rgb[0]},${t.rgb[1]},${t.rgb[2]})`);
+    const totalStitches = pattern.dimensions ? pattern.dimensions.width_stitches * pattern.dimensions.height_stitches : 0;
     
+    // Check if existing item has custom tags or favorite status
+    const existing = list.find(p => p.pattern_id === pattern.pattern_id);
+
     const listItem: PatternListItem = {
       pattern_id: pattern.pattern_id,
       name: pattern.name,
@@ -230,16 +354,20 @@ async function updatePatternsList(pattern: StoredPattern): Promise<void> {
       height_stitches: pattern.dimensions.height_stitches,
       color_count: pattern.color_palette.length,
       progress_percent: progressPercent,
+      favorite: pattern.favorite ?? existing?.favorite ?? false,
+      tags: pattern.tags ?? existing?.tags ?? [],
+      preview_colors: previewColors,
+      total_stitches: totalStitches,
     };
     
     // Remove old entry if exists
     const filteredList = list.filter(p => p.pattern_id !== pattern.pattern_id);
     
-    // Add new entry
+    // Add new entry to top
     filteredList.unshift(listItem);
     
-    // Keep max 20 entries in recent list
-    const trimmed = filteredList.slice(0, 20);
+    // Keep up to 250 entries in library list
+    const trimmed = filteredList.slice(0, 250);
     
     await AsyncStorage.setItem(PATTERNS_LIST_KEY, JSON.stringify(trimmed));
   } catch (err) {

@@ -14,7 +14,7 @@ import {
 import Svg, { Line, Circle as SvgCircle } from 'react-native-svg';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { loadPattern as loadPatternFromStorage, savePattern, StoredPattern, getUserStash, StashItem } from '../services/patternStorage';
+import { loadPattern as loadPatternFromStorage, savePattern, renamePattern, StoredPattern, getUserStash, StashItem } from '../services/patternStorage';
 import { DEMO_PATTERN } from '../services/demoPattern';
 import { colors, shadows } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
@@ -627,6 +627,38 @@ export default function PatternEditorScreen() {
     }
   };
 
+  const handleRenamePattern = () => {
+    if (!pattern) return;
+    if (Platform.OS === 'web') {
+      const newName = window.prompt('Zmień nazwę wzoru:', pattern.name);
+      if (newName && newName.trim() && newName.trim() !== pattern.name) {
+        const trimmed = newName.trim();
+        setPattern(prev => prev ? { ...prev, name: trimmed } : null);
+        renamePattern(pattern.pattern_id, trimmed);
+      }
+    } else {
+      Alert.prompt?.(
+        'Zmień nazwę wzoru',
+        'Wpisz nową nazwę:',
+        [
+          { text: 'Anuluj', style: 'cancel' },
+          {
+            text: 'Zapisz',
+            onPress: (text?: string) => {
+              if (text && text.trim()) {
+                const trimmed = text.trim();
+                setPattern(prev => prev ? { ...prev, name: trimmed } : null);
+                renamePattern(pattern.pattern_id, trimmed);
+              }
+            }
+          }
+        ],
+        'plain-text',
+        pattern.name
+      );
+    }
+  };
+
   const selectedThread = color_palette[selectedColorIndex] || color_palette[0];
 
   // Render High-Performance Hardware-Accelerated Canvas Viewport
@@ -700,14 +732,22 @@ export default function PatternEditorScreen() {
               </Text>
             </TouchableOpacity>
 
-            <View style={styles.titleContainer}>
-              <Text style={[styles.headerTitle, { color: theme.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">
-                {pattern.name}
-              </Text>
+            <TouchableOpacity
+              style={styles.titleContainer}
+              onPress={handleRenamePattern}
+              activeOpacity={0.75}
+              accessibilityLabel="Kliknij aby zmienić nazwę wzoru"
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={[styles.headerTitle, { color: theme.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">
+                  {pattern.name}
+                </Text>
+                <PencilCraftIcon size={12} color={theme.textMuted} />
+              </View>
               <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
-                {width}×{height} ({pattern.dimensions.width_cm}×{pattern.dimensions.height_cm} cm) • {color_palette.length} kol.
+                {width}×{height} ({pattern.dimensions.width_cm}×{pattern.dimensions.height_cm} cm) • {color_palette.length} kol. (kliknij by zmienić nazwę)
               </Text>
-            </View>
+            </TouchableOpacity>
 
             <View style={styles.headerActionsGroup}>
               {/* Theme switcher (Cozy / OLED Dark / Eye Guard) */}

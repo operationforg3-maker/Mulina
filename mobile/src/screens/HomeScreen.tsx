@@ -7,6 +7,7 @@ import {
   ScrollView,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -103,12 +104,14 @@ export default function HomeScreen() {
       {/* Top App Header */}
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.surfaceBorder }]}>
         <View style={styles.headerLeft}>
-          <View style={[styles.logoBadge, { backgroundColor: theme.primary }]}>
-            <Text style={{ fontSize: 20 }}>🧵</Text>
-          </View>
+          <Image
+            source={require('../../assets/mualina_logo.png')}
+            style={styles.headerLogoImage}
+            resizeMode="contain"
+          />
           <View>
-            <Text style={[styles.brandTitle, { color: theme.textPrimary }]}>Mu'alina</Text>
-            <Text style={[styles.brandSubtitle, { color: theme.textSecondary }]}>Pracownia & Tamborek</Text>
+            <Text style={[styles.brandTitle, { color: theme.textPrimary }]}>Mu'Alina</Text>
+            <Text style={[styles.brandSubtitle, { color: theme.textSecondary }]}>Cottagecore & Tamborek</Text>
           </View>
         </View>
 
@@ -143,6 +146,24 @@ export default function HomeScreen() {
         contentContainerStyle={[styles.scrollContent, isTabletOrLarger && styles.tabletScrollContent]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Enchanting Rustic Atelier Hero Banner */}
+        <View style={[styles.bannerContainer, { borderColor: theme.surfaceBorder }]}>
+          <Image
+            source={require('../../assets/hero_banner.png')}
+            style={styles.bannerImage}
+            resizeMode="cover"
+          />
+          <View style={styles.bannerOverlay}>
+            <View style={styles.bannerPill}>
+              <Text style={styles.bannerPillText}>🌸 Dedykowane Teściowej Alinie</Text>
+            </View>
+            <Text style={styles.bannerTitle}>Pracownia Haftu Mu'Alina</Text>
+            <Text style={styles.bannerSubtitle}>
+              Twoja przytulna przestrzeń do haftu krzyżykowego
+            </Text>
+          </View>
+        </View>
+
         {/* Welcome Greeting */}
         <View style={styles.greetingSection}>
           <Text style={[styles.greetingTitle, { color: theme.textPrimary }]}>Witaj z powrotem! ✨</Text>
@@ -374,7 +395,12 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
+  },
+  headerLogoImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   logoBadge: {
     width: 38,
@@ -384,13 +410,68 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   brandTitle: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
   brandSubtitle: {
     fontSize: 11,
     marginTop: 1,
+  },
+  bannerContainer: {
+    borderRadius: 22,
+    overflow: 'hidden',
+    marginBottom: 20,
+    borderWidth: 1,
+    position: 'relative',
+    backgroundColor: '#FAF7F2',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  bannerImage: {
+    width: '100%',
+    height: 180,
+  },
+  bannerOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: 'rgba(30, 20, 24, 0.65)',
+  },
+  bannerPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 6,
+  },
+  bannerPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#D9777F',
+  },
+  bannerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  bannerSubtitle: {
+    fontSize: 12,
+    color: '#FAF7F2',
+    marginTop: 2,
+    fontWeight: '500',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   headerRight: {
     flexDirection: 'row',

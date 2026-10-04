@@ -12,6 +12,8 @@ npx expo export -p web
 
 echo "📋 Kopiowanie plików PWA i ikon..."
 cp -r public/* dist/
+cp assets/mualina_logo.png dist/mualina_logo.png 2>/dev/null || true
+cp assets/hero_banner.png dist/hero_banner.png 2>/dev/null || true
 cp assets/icon.png dist/icon.png 2>/dev/null || true
 cp assets/splash.png dist/splash.png 2>/dev/null || true
 cp assets/favicon.png dist/favicon.png 2>/dev/null || true
@@ -26,11 +28,12 @@ html = html.replace('content=\"#7C3AED\"', 'content=\"#D9777F\"')
 
 # Wstrzyknij tagi PWA oraz emergency recovery script jeśli ich brakuje
 pwa_tags = '''
-    <!-- Mulina PWA Meta Tags -->
+    <!-- Mu\'Alina PWA Meta Tags -->
+    <title>Mu\'Alina — Cyfrowy Tamborek i Wzory Haftu</title>
     <meta name=\"theme-color\" content=\"#D9777F\" />
     <meta name=\"apple-mobile-web-app-capable\" content=\"yes\" />
     <meta name=\"apple-mobile-web-app-status-bar-style\" content=\"default\" />
-    <meta name=\"apple-mobile-web-app-title\" content=\"Mulina\" />
+    <meta name=\"apple-mobile-web-app-title\" content=\"Mu\'Alina\" />
     <link rel=\"manifest\" href=\"/mulina/manifest.json\" />
     <link rel=\"apple-touch-icon\" href=\"/mulina/icon.png\" />
     <script>

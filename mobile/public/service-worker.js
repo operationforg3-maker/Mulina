@@ -1,10 +1,12 @@
-// Mulina PWA Service Worker - Resilient Cache & Auto-Update
-const CACHE_VERSION = 'mulina-v4-pwa-fix';
-const BASE_PATH = self.registration.scope || '/mulina/';
+// Mu'Alina PWA Service Worker - Resilient Cache & Auto-Update
+const CACHE_VERSION = 'mualina-v5-firebase';
+const BASE_PATH = (self.registration && self.registration.scope)
+  ? new URL(self.registration.scope).pathname
+  : '/';
 
 const CORE_ASSETS = [
   `${BASE_PATH}manifest.json`,
-  `${BASE_PATH}favicon.ico`,
+  `${BASE_PATH}favicon.png`,
 ];
 
 // Install: Cache core assets and immediately activate

@@ -37,15 +37,15 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
-      "name": "Mulina — Wzory Haftu i Tamborek",
-      "shortName": "Mulina",
-      "description": "Profesjonalny asystent haftu krzyżykowego i konwerter zdjęć na muliny DMC na tablet i telefon",
+      "name": "Mu'Alina — Cyfrowy Tamborek i Wzory Haftu",
+      "shortName": "Mu'Alina",
+      "description": "Profesjonalna aplikacja do haftu krzyżykowego i płaskiego, czytnik schematów i konwerter zdjęć na muliny DMC",
       "themeColor": "#D9777F",
       "backgroundColor": "#FAF7F2",
       "display": "standalone",
       "orientation": "any",
-      "scope": "/mulina/",
-      "startUrl": "/mulina/",
+      "scope": "/",
+      "startUrl": "/",
       "lang": "pl",
       "preferRelatedApplications": false
     },
@@ -58,7 +58,7 @@
       ]
     ],
     "experiments": {
-      "baseUrl": "/mulina"
+      "baseUrl": ""
     },
     "extra": {
       "eas": {

@@ -15,16 +15,20 @@ import { colors, shadows } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
 import { listRecentPatterns, PatternListItem, getUserStash } from '../services/patternStorage';
-import { HoopIcon, NeedleIcon, HearthFlameIcon, FlowerIcon, RusticDivider } from '../components/RusticIcons';
+import { HoopIcon, NeedleIcon, HearthFlameIcon, FlowerIcon, BirdIcon, RusticDivider } from '../components/RusticIcons';
+import { useAuth } from '../services/authContext';
+import { backupAllPatternsToCloud, restoreAllPatternsFromCloud } from '../services/firebaseSync';
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { theme, themeMode } = useTheme();
   const { isTabletOrLarger } = useResponsive();
+  const { user, logout } = useAuth();
 
   const [patterns, setPatterns] = useState<PatternListItem[]>([]);
   const [totalStashColors, setTotalStashColors] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   // Gamification states
   const streakDays = 7;
@@ -32,18 +36,79 @@ export default function ProfileScreen() {
   const totalStitchesCount = 14850;
   const stitchingSpeedPerHour = 135;
 
+  const refreshLocalData = async () => {
+    try {
+      const recent = await listRecentPatterns();
+      setPatterns(recent || []);
+      const stash = await getUserStash();
+      setTotalStashColors(Object.keys(stash || {}).length);
+    } catch (e) {
+      console.warn('Failed to load profile data', e);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        const recent = await listRecentPatterns();
-        setPatterns(recent || []);
-        const stash = await getUserStash();
-        setTotalStashColors(Object.keys(stash || {}).length);
-      } catch (e) {
-        console.warn('Failed to load profile data', e);
-      }
-    })();
+    refreshLocalData();
   }, []);
+
+  const handleBackupToCloud = async () => {
+    if (!user) {
+      navigation.navigate('Login');
+      return;
+    }
+    setSyncing(true);
+    try {
+      const res = await backupAllPatternsToCloud(user.uid);
+      Alert.alert(
+        'Kopia w chmurze Firebase',
+        `Pomyślnie zsynchronizowano ${res.success} wzorów z bazą Firestore na Twoim koncie.`
+      );
+    } catch (err: any) {
+      Alert.alert('Błąd synchronizacji', err.message || 'Nie udało się zsynchronizować wzorów.');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleRestoreFromCloud = async () => {
+    if (!user) {
+      navigation.navigate('Login');
+      return;
+    }
+    setSyncing(true);
+    try {
+      const count = await restoreAllPatternsFromCloud(user.uid);
+      await refreshLocalData();
+      Alert.alert(
+        'Pobrano z chmury',
+        count > 0
+          ? `Pobrano i scalono ${count} wzorów z Twojego konta Firebase!`
+          : 'Brak zapisanych wzorów w Twojej chmurze Firebase.'
+      );
+    } catch (err: any) {
+      Alert.alert('Błąd pobierania', err.message || 'Nie udało się pobrać wzorów z chmury.');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    Alert.alert('Wylogowanie', 'Czy na pewno chcesz się wylogować?', [
+      { text: 'Anuluj', style: 'cancel' },
+      {
+        text: 'Wyloguj',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await logout();
+            Alert.alert('Wylogowano', 'Do zobaczenia przy tamborku!');
+          } catch (e: any) {
+            Alert.alert('Błąd', e.message);
+          }
+        },
+      },
+    ]);
+  };
 
   const handleShareStory = async () => {
     try {
@@ -57,6 +122,20 @@ export default function ProfileScreen() {
     }
   };
 
+  const getUserDisplayName = () => {
+    if (!user) return 'Hafciarka (Niezalogowana)';
+    if (user.displayName) return user.displayName;
+    if (user.isAnonymous) return 'Gość Pracowni';
+    if (user.email) return user.email.split('@')[0];
+    return 'Hafciarka Mu\'Alina';
+  };
+
+  const getUserSubtitle = () => {
+    if (!user) return 'Zaloguj się, aby połączyć tamborek z chmurą Firebase';
+    if (user.isAnonymous) return 'Konto tymczasowe • Wzory zapisane lokalnie';
+    return user.email || 'Konto połączone z Firebase Firestore';
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -66,19 +145,74 @@ export default function ProfileScreen() {
           <View style={[styles.profileCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
             <View style={styles.profileHeaderRow}>
               <View style={[styles.avatarBox, { backgroundColor: theme.primaryLight, borderColor: theme.primaryBorder }]}>
-                <NeedleIcon size={32} color={theme.primary} />
+                {user ? (
+                  <BirdIcon size={32} color={theme.primary} />
+                ) : (
+                  <NeedleIcon size={32} color={theme.primary} />
+                )}
               </View>
               <View style={{ flex: 1 }}>
                 <View style={styles.titleRow}>
-                  <Text style={[styles.userName, { color: theme.textPrimary }]}>Hafciarka Kasia</Text>
-                  <View style={[styles.levelBadge, { backgroundColor: theme.caramelLight, borderColor: theme.caramelBorder }]}>
-                    <Text style={[styles.levelBadgeText, { color: theme.caramelDark }]}>Złota Igła (Poz. 4)</Text>
-                  </View>
+                  <Text style={[styles.userName, { color: theme.textPrimary }]}>{getUserDisplayName()}</Text>
+                  {user && !user.isAnonymous ? (
+                    <View style={[styles.levelBadge, { backgroundColor: '#E8F5E9', borderColor: '#C8E6C9' }]}>
+                      <Text style={[styles.levelBadgeText, { color: '#2E7D32' }]}>Firebase Online ☁️</Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.levelBadge, { backgroundColor: theme.caramelLight, borderColor: theme.caramelBorder }]}>
+                      <Text style={[styles.levelBadgeText, { color: theme.caramelDark }]}>Złota Igła</Text>
+                    </View>
+                  )}
                 </View>
                 <Text style={[styles.userBio, { color: theme.textSecondary }]}>
-                  Pasjonatka motywów botanicznych i pejzaży • DMC & Aida 14ct
+                  {getUserSubtitle()}
                 </Text>
               </View>
+            </View>
+
+            {/* Cloud Auth Action Row */}
+            <View style={{ marginTop: 14 }}>
+              {!user ? (
+                <TouchableOpacity
+                  style={[styles.loginCtaBtn, { backgroundColor: theme.primary }]}
+                  onPress={() => navigation.navigate('Login')}
+                  activeOpacity={0.88}
+                >
+                  <Text style={styles.loginCtaText}>Zaloguj się / Załóż konto w chmurze</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.authActionsRow}>
+                  <TouchableOpacity
+                    style={[styles.syncBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}
+                    onPress={handleBackupToCloud}
+                    disabled={syncing}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.syncBtnText, { color: theme.primary }]}>
+                      {syncing ? 'Synchronizacja...' : '☁️ Zapisz wzory w chmurze'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.syncBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}
+                    onPress={handleRestoreFromCloud}
+                    disabled={syncing}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.syncBtnText, { color: theme.primary }]}>
+                      📥 Pobierz z chmury
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.logoutBtn, { borderColor: '#FFCDD2', backgroundColor: '#FFEBEE' }]}
+                    onPress={handleLogout}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.logoutBtnText, { color: '#C62828' }]}>Wyloguj</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             {/* Streak & Daily Progress Row */}
@@ -311,6 +445,49 @@ const styles = StyleSheet.create({
   userBio: {
     fontSize: 13,
     marginTop: 4,
+  },
+  loginCtaBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.glowPrimary,
+  },
+  loginCtaText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  authActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+  },
+  syncBtn: {
+    flex: 1,
+    minWidth: 140,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  syncBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  logoutBtn: {
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  logoutBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   streakBanner: {
     flexDirection: 'row',

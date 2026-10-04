@@ -30,11 +30,13 @@ import {
   HearthFlameIcon,
   RusticDivider,
 } from '../components/RusticIcons';
+import { useAuth } from '../services/authContext';
 
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme, themeMode, cycleTheme } = useTheme();
   const { isTabletOrLarger } = useResponsive();
+  const { user } = useAuth();
 
   const [recentPatterns, setRecentPatterns] = useState<PatternListItem[]>([]);
   const [showAndroidModal, setShowAndroidModal] = useState(false);
@@ -151,7 +153,28 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('Profile')}
             activeOpacity={0.8}
           >
-            <BirdIcon size={18} color={theme.primary} />
+            {user && (user.displayName || user.email) ? (
+              <Text style={{ fontSize: 13, fontWeight: '800', color: theme.primary }}>
+                {(user.displayName || user.email)![0].toUpperCase()}
+              </Text>
+            ) : (
+              <BirdIcon size={18} color={theme.primary} />
+            )}
+            {user && !user.isAnonymous && (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: -2,
+                  right: -2,
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: '#4CAF50',
+                  borderWidth: 1.5,
+                  borderColor: '#FFFFFF',
+                }}
+              />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -180,9 +203,15 @@ export default function HomeScreen() {
 
         {/* Welcome Greeting */}
         <View style={styles.greetingSection}>
-          <Text style={[styles.greetingTitle, { color: theme.textPrimary }]}>Witaj w pracowni haftu</Text>
+          <Text style={[styles.greetingTitle, { color: theme.textPrimary }]}>
+            {user && (user.displayName || user.email)
+              ? `Witaj, ${user.displayName || (user.email ? user.email.split('@')[0] : 'Hafciarko')}!`
+              : 'Witaj w pracowni haftu'}
+          </Text>
           <Text style={[styles.greetingSubtitle, { color: theme.textSecondary }]}>
-            Dziś wyhaftowano 260 krzyżyków. Tamborek czeka na kolejną nitkę!
+            {user && !user.isAnonymous
+              ? 'Twoje konto jest połączone z chmurą Firebase. Tamborek czeka na kolejną nitkę!'
+              : 'Dziś wyhaftowano 260 krzyżyków. Tamborek czeka na kolejną nitkę!'}
           </Text>
         </View>
 

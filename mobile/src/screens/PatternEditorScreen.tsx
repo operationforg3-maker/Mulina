@@ -19,6 +19,7 @@ import { DEMO_PATTERN } from '../services/demoPattern';
 import { colors, shadows } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
+import PatternCanvasViewport from '../components/PatternCanvasViewport';
 
 type RootStackParamList = {
   Home: undefined;
@@ -600,206 +601,57 @@ export default function PatternEditorScreen() {
 
   const selectedThread = color_palette[selectedColorIndex] || color_palette[0];
 
-  // Render Canvas Grid Component
+  // Render High-Performance Hardware-Accelerated Canvas Viewport
   const renderCanvasGrid = () => (
-    <ScrollView 
-      horizontal 
-      style={styles.horizontalScroll}
-      scrollEnabled={!isDragStitchMode}
-      onScroll={(e) => { scrollOffsetRef.current.x = e.nativeEvent.contentOffset.x; }}
-      scrollEventThrottle={16}
-    >
-      <ScrollView 
-        style={styles.verticalScroll}
-        scrollEnabled={!isDragStitchMode}
-        onScroll={(e) => { scrollOffsetRef.current.y = e.nativeEvent.contentOffset.y; }}
-        scrollEventThrottle={16}
-      >
-        <View 
-          ref={gridContainerRef}
-          onLayout={onGridLayout}
-          style={[styles.canvasWrapper, isDragStitchMode && styles.canvasWrapperStitchMode]}
-          {...(Platform.OS === 'web' ? webPointerHandlers : panResponder.panHandlers)}
-        >
-          {/* Top Coordinate Numbers (10, 20, 30...) */}
-          <View style={styles.topRulerRow}>
-            <View style={{ width: 28 }} />
-            {Array.from({ length: width }).map((_, c) => (
-              <View key={`ruler-top-${c}`} style={[styles.rulerCell, { width: cellSize }]}>
-                {(c + 1) % 10 === 0 && <Text style={styles.rulerText}>{c + 1}</Text>}
-              </View>
-            ))}
-          </View>
-
-          {/* Grid Rows */}
-          {grid.map((row, r) => (
-            <View key={`grid-row-${r}`} style={styles.gridRow}>
-              {/* Left Coordinate Number */}
-              <View style={styles.leftRulerCell}>
-                {(r + 1) % 10 === 0 && <Text style={styles.rulerText}>{r + 1}</Text>}
-              </View>
-
-              {row.map((colorIdx, c) => {
-                const thread = color_palette[colorIdx];
-                const isDone = completedStitches[r]?.[c];
-                const isHighlighted = highlightColorIndex === null || highlightColorIndex === colorIdx;
-                const isTargetColor = highlightColorIndex === colorIdx;
-
-                const bg = thread
-                  ? `rgb(${thread.rgb[0]}, ${thread.rgb[1]}, ${thread.rgb[2]})`
-                  : '#ffffff';
-
-                const isMajorBottom = (r + 1) % 10 === 0 && r !== height - 1;
-                const isMajorRight = (c + 1) % 10 === 0 && c !== width - 1;
-
-                const cellStyles = [
-                  styles.stitchCell,
-                  {
-                    width: cellSize,
-                    height: cellSize,
-                    backgroundColor: viewMode === 'symbols' ? '#ffffff' : bg,
-                    opacity: isHighlighted ? 1 : 0.15,
-                    borderBottomWidth: isMajorBottom ? 2 : 0.5,
-                    borderRightWidth: isMajorRight ? 2 : 0.5,
-                    borderColor: isMajorBottom || isMajorRight ? '#3D3734' : '#D1C7BD',
-                  },
-                  isTargetColor && styles.targetColorGlow,
-                  isDone && styles.completedCellOverlay,
-                ];
-
-                const cellContent = (
-                  <>
-                    {viewMode === 'stitches' && thread && (
-                      <Text
-                        style={[
-                          styles.crossStitchTexture,
-                          {
-                            fontSize: Math.max(10, cellSize * 0.9),
-                            color: isDone ? '#9ca3af' : '#ffffff',
-                            textShadowColor: 'rgba(0,0,0,0.45)',
-                            textShadowOffset: { width: 0, height: 1 },
-                            textShadowRadius: 1,
-                          },
-                        ]}
-                      >
-                        ✕
-                      </Text>
-                    )}
-
-                    {viewMode === 'symbols' && thread && (
-                      <Text
-                        style={[
-                          styles.symbolText,
-                          {
-                            fontSize: Math.max(9, cellSize * 0.6),
-                            color: isDone ? '#9ca3af' : `rgb(${thread.rgb[0]}, ${thread.rgb[1]}, ${thread.rgb[2]})`,
-                            fontWeight: '900',
-                          },
-                        ]}
-                      >
-                        {thread.symbol || '●'}
-                      </Text>
-                    )}
-
-                    {isDone && (
-                      <View style={styles.doneCheckmark}>
-                        <Text style={{ fontSize: Math.max(8, cellSize * 0.5), color: colors.sage, fontWeight: 'bold' }}>✓</Text>
-                      </View>
-                    )}
-
-                    {/* Parked Threads Markers */}
-                    {parkedThreads
-                      .filter(pt => pt.r === r && pt.c === c)
-                      .map((pt, idx) => {
-                        const ptThread = color_palette[pt.color_index] || color_palette[0];
-                        const ptBg = ptThread ? `rgb(${ptThread.rgb[0]}, ${ptThread.rgb[1]}, ${ptThread.rgb[2]})` : colors.caramel;
-                        const posStyle = 
-                          pt.corner === 'NW' ? { top: 0, left: 0 } :
-                          pt.corner === 'NE' ? { top: 0, right: 0 } :
-                          pt.corner === 'SW' ? { bottom: 0, left: 0 } :
-                          { bottom: 0, right: 0 };
-                        return (
-                          <View key={`pt-${idx}`} style={[styles.parkingMarker, posStyle, { backgroundColor: ptBg }]}>
-                            <Text style={styles.parkingMarkerText}>📍</Text>
-                          </View>
-                        );
-                      })
-                    }
-                  </>
-                );
-
-                if (isDragStitchMode) {
-                  return (
-                    <View key={`c-${r}-${c}`} style={cellStyles}>
-                      {cellContent}
-                    </View>
-                  );
-                }
-
-                return (
-                  <TouchableOpacity
-                    key={`c-${r}-${c}`}
-                    activeOpacity={0.8}
-                    onPress={() => handleCellClick(r, c)}
-                    style={cellStyles}
-                  >
-                    {cellContent}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ))}
-
-          {/* Backstitch SVG Layer */}
-          {showBackstitch && backstitchLines.length > 0 && (
-            <View 
-              pointerEvents="box-none" 
-              style={[
-                StyleSheet.absoluteFill, 
-                { left: RULER_LEFT_WIDTH + 16, top: RULER_TOP_HEIGHT + 16, width: width * cellSize, height: height * cellSize }
-              ]}
-            >
-              <Svg width={width * cellSize} height={height * cellSize}>
-                {backstitchLines.map((line) => {
-                  const t = color_palette[line.color_index] || color_palette[0];
-                  const strokeColor = t ? `rgb(${t.rgb[0]}, ${t.rgb[1]}, ${t.rgb[2]})` : '#000000';
-                  return (
-                    <Line
-                      key={line.id}
-                      x1={line.x1 * cellSize}
-                      y1={line.y1 * cellSize}
-                      x2={line.x2 * cellSize}
-                      y2={line.y2 * cellSize}
-                      stroke={line.completed ? colors.sage : strokeColor}
-                      strokeWidth={line.completed ? 4 : 2.5}
-                      strokeDasharray={line.completed ? '4 2' : undefined}
-                      strokeLinecap="round"
-                      onPress={() => toggleBackstitch(line.id)}
-                    />
-                  );
-                })}
-              </Svg>
-            </View>
-          )}
-
-          {/* Box Selection Overlay */}
-          {isBoxSelecting && boxStart && boxEnd && (
-            <View
-              pointerEvents="none"
-              style={[
-                styles.boxSelectionRect,
-                {
-                  left: RULER_LEFT_WIDTH + 16 + Math.min(boxStart.c, boxEnd.c) * cellSize,
-                  top: RULER_TOP_HEIGHT + 16 + Math.min(boxStart.r, boxEnd.r) * cellSize,
-                  width: (Math.abs(boxEnd.c - boxStart.c) + 1) * cellSize,
-                  height: (Math.abs(boxEnd.r - boxStart.r) + 1) * cellSize,
-                },
-              ]}
-            />
-          )}
-        </View>
-      </ScrollView>
-    </ScrollView>
+    <PatternCanvasViewport
+      grid={grid}
+      width={width}
+      height={height}
+      colorPalette={color_palette}
+      completedStitches={completedStitches}
+      selectedColorIndex={selectedColorIndex}
+      highlightColorIndex={highlightColorIndex}
+      viewMode={viewMode}
+      activeTool={activeTool}
+      stitchLock={stitchLock}
+      parkingCorner={parkingCorner}
+      parkedThreads={parkedThreads}
+      backstitchLines={backstitchLines}
+      showBackstitch={showBackstitch}
+      onCellClick={handleCellClick}
+      onCellDragMark={(cells, mode) => {
+        const nextCompleted = completedStitches.map(row => [...row]);
+        let changed = false;
+        for (const { r, c } of cells) {
+          if (r >= 0 && r < height && c >= 0 && c < width) {
+            const newVal = mode === 'mark';
+            if (nextCompleted[r][c] !== newVal) {
+              nextCompleted[r][c] = newVal;
+              changed = true;
+            }
+          }
+        }
+        if (changed) {
+          setCompletedStitches(nextCompleted);
+          const updated = {
+            ...pattern,
+            progress: {
+              completed_stitches: nextCompleted,
+              current_color_index: selectedColorIndex,
+              last_worked: new Date().toISOString(),
+            },
+          };
+          savePattern(updated as any);
+        }
+      }}
+      onPickColor={(colorIdx) => {
+        setSelectedColorIndex(colorIdx);
+        setHighlightColorIndex(colorIdx);
+      }}
+      onUndo={handleUndo}
+      onRedo={handleRedo}
+      themeMode={themeMode}
+    />
   );
 
   return (

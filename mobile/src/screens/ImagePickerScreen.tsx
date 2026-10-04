@@ -14,10 +14,9 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { savePattern, StoredPattern } from '../services/patternStorage';
+import { savePattern } from '../services/patternStorage';
 import { parsePatternFile } from '../services/parsers/patternParsers';
 import { convertImageClient } from '../services/clientPatternConverter';
-import { DEMO_PATTERN } from '../services/demoPattern';
 import GlobalLoader from '../components/GlobalLoader';
 import { colors, shadows } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
@@ -88,8 +87,11 @@ export const CANVAS_FORMATS: CanvasFormatItem[] = [
 export default function ImagePickerScreen() {
   const navigation = useNavigation<ImagePickerNavigationProp>();
   const { isTabletOrLarger } = useResponsive();
-
   const { theme } = useTheme();
+
+  // Wizard Step: 1 = Zdjęcie, 2 = Płótno i Rozmiar, 3 = Nici DMC i Styl
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
+
   const [selectedImage, setSelectedImage] = useState<string | null>(PRESET_IMAGES[0].url);
   const [loading, setLoading] = useState(false);
 
@@ -123,7 +125,7 @@ export default function ImagePickerScreen() {
   const [canvasColor, setCanvasColor] = useState<'white' | 'cream' | 'black' | 'linen'>('white');
   const [marginCm, setMarginCm] = useState<number>(5);
 
-  // 3. Thread & Palette Settings (DMC, Anchor, CXC, Ariadna, Madeira, Dimensions)
+  // 3. Thread & Palette Settings
   const [threadBrand, setThreadBrand] = useState<'DMC' | 'Anchor' | 'Ariadna' | 'Madeira' | 'CXC' | 'Dimensions'>('DMC');
   const [maxColors, setMaxColors] = useState<number>(30);
   const [cleanupConfetti, setCleanupConfetti] = useState<boolean>(true);
@@ -152,7 +154,6 @@ export default function ImagePickerScreen() {
     let finalWidthCm = chosenFormat.widthCm;
     let finalHeightCm = chosenFormat.heightCm;
 
-    // Fit image nicely into format boundary preserving aspect ratio
     if (aspect > formatAspect) {
       finalHeightCm = chosenFormat.heightCm;
       finalWidthCm = chosenFormat.heightCm / aspect;
@@ -173,7 +174,6 @@ export default function ImagePickerScreen() {
     estWidthStitches = Math.max(10, Math.round(w * stitchesPerCm));
     estHeightStitches = Math.max(10, Math.round(h * stitchesPerCm));
   } else {
-    // stitches mode
     const wStitches = parseInt(customWidthStitchesInput, 10) || targetStitches || 80;
     const hStitches = lockAspect ? Math.round(wStitches * aspect) : (parseInt(customHeightStitchesInput, 10) || Math.round(wStitches * aspect));
     estWidthStitches = Math.max(10, wStitches);
@@ -308,7 +308,6 @@ export default function ImagePickerScreen() {
     setLoading(true);
 
     try {
-      // 1. Direct in-browser client conversion (works 100% offline, on web, and device)
       const converted = await convertImageClient({
         imageUri: selectedImage,
         targetWidth: estWidthStitches,
@@ -332,7 +331,6 @@ export default function ImagePickerScreen() {
       }
       setLoading(false);
 
-      // Instantly open the interactive pattern reader!
       navigation.navigate('PatternEditor', {
         patternId: converted.pattern_id,
         pattern: converted,
@@ -351,20 +349,20 @@ export default function ImagePickerScreen() {
     }
   };
 
-  // Content for Section 1: Image Selection
-  const renderImageSection = () => (
-    <View style={styles.section}>
-      {/* Direct Pattern File Import Banner (.saga, .xsd, .pat, .oxs, .pdf) */}
+  // STEP 1: Zdjęcie i Wzory
+  const renderStep1 = () => (
+    <View style={styles.stepContainer}>
+      {/* Direct Pattern File Import Banner */}
       <View style={[styles.fileImportBanner, { backgroundColor: theme.primaryLight, borderColor: theme.primaryBorder }]}>
-        <View style={styles.fileImportIconBox}>
-          <Text style={{ fontSize: 26 }}>📥</Text>
+        <View style={[styles.fileImportIconBox, { backgroundColor: theme.surface }]}>
+          <Text style={{ fontSize: 24 }}>📥</Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.fileImportTitle, { color: theme.primaryDark }]}>
-            Masz już gotowy wzór (.saga, .xsd, .pat, .oxs, .pdf)?
+            Masz gotowy plik haftu?
           </Text>
           <Text style={[styles.fileImportDesc, { color: theme.textSecondary }]}>
-            Otwórz schemat wyeksportowany z Cross Stitch Saga, Pattern Maker, PCStitch lub PDF.
+            Obsługa formatów .saga, .xsd, .pat, .oxs oraz cyfrowych i skanowanych PDF.
           </Text>
         </View>
         <TouchableOpacity style={[styles.fileImportBtn, { backgroundColor: theme.primary }]} onPress={handlePickPatternFile} activeOpacity={0.85}>
@@ -372,99 +370,132 @@ export default function ImagePickerScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionTitle}>📸 1. Lub przekonwertuj grafikę na haft</Text>
-      <Text style={styles.helperText}>Wybierz gotowy motyw lub wgraj własne zdjęcie z dysku/galerii:</Text>
-      
-      <View style={styles.presetsRow}>
-        {PRESET_IMAGES.map((preset) => (
-          <TouchableOpacity
-            key={preset.id}
-            style={[
-              styles.presetCard,
-              selectedImage === preset.url && styles.presetCardActive,
-            ]}
-            onPress={() => setSelectedImage(preset.url)}
-          >
-            <Image source={{ uri: preset.url }} style={styles.presetImage} />
-            <Text style={styles.presetName}>{preset.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {/* Preset selection card */}
+      <View style={[styles.cozyCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+        <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+          📸 Wybierz lub wgraj zdjęcie do konwersji
+        </Text>
+        <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
+          Wybierz jedną z gotowych grafik demonstracyjnych lub wgraj własne zdjęcie:
+        </Text>
 
-      {selectedImage && (
-        <View style={styles.imagePreviewContainer}>
-          <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
+        <View style={styles.presetsRow}>
+          {PRESET_IMAGES.map((preset) => (
+            <TouchableOpacity
+              key={preset.id}
+              style={[
+                styles.presetCard,
+                selectedImage === preset.url && {
+                  borderColor: theme.primary,
+                  backgroundColor: theme.primaryLight,
+                },
+              ]}
+              onPress={() => setSelectedImage(preset.url)}
+              activeOpacity={0.85}
+            >
+              <Image source={{ uri: preset.url }} style={styles.presetImage} />
+              <Text style={[styles.presetName, { color: theme.textPrimary }]}>{preset.name}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      )}
 
-      <TouchableOpacity style={styles.pickButton} onPress={pickImage} activeOpacity={0.85}>
-        <Text style={styles.pickButtonText}>📁 Wgraj własne zdjęcie z galerii</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={[styles.uploadButton, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]} onPress={pickImage} activeOpacity={0.85}>
+          <Text style={{ fontSize: 18, marginRight: 8 }}>🖼️</Text>
+          <Text style={[styles.uploadButtonText, { color: theme.textPrimary }]}>Wgraj własne zdjęcie z galerii</Text>
+        </TouchableOpacity>
 
-      {/* Brightness & Contrast Quick Adjustments */}
-      <View style={styles.subRowContainer}>
-        <View style={styles.subRowItem}>
-          <Text style={styles.subRowLabel}>☀️ Jasność:</Text>
-          <View style={styles.chipRow}>
-            {[
-              { label: '-20%', val: 0.8 },
-              { label: 'Normalna', val: 1.0 },
-              { label: '+20%', val: 1.2 },
-            ].map((b) => (
-              <TouchableOpacity
-                key={b.label}
-                style={[styles.chip, brightness === b.val && styles.chipActive]}
-                onPress={() => setBrightness(b.val)}
-              >
-                <Text style={[styles.chipText, brightness === b.val && styles.chipTextActive]}>
-                  {b.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        {selectedImage && (
+          <View style={styles.previewContainer}>
+            <Image source={{ uri: selectedImage }} style={styles.previewImage} />
+            <View style={styles.aspectBadge}>
+              <Text style={styles.aspectBadgeText}>
+                Proporcja: {aspect >= 1 ? `1 : ${aspect.toFixed(2)}` : `${(1 / aspect).toFixed(2)} : 1`}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Quick Brightness & Contrast Toggles */}
+        <View style={styles.filterSection}>
+          <Text style={[styles.filterSectionTitle, { color: theme.textPrimary }]}>
+            ✨ Szybka korekta tonalna zdjęcia:
+          </Text>
+          <View style={styles.filterRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.filterLabel, { color: theme.textSecondary }]}>Jasność:</Text>
+              <View style={styles.chipRow}>
+                {[
+                  { label: '-20%', val: 0.8 },
+                  { label: 'Standard', val: 1.0 },
+                  { label: '+20%', val: 1.2 },
+                ].map((b) => (
+                  <TouchableOpacity
+                    key={b.label}
+                    style={[styles.smallChip, brightness === b.val && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+                    onPress={() => setBrightness(b.val)}
+                  >
+                    <Text style={[styles.smallChipText, brightness === b.val && { color: '#ffffff', fontWeight: '800' }]}>
+                      {b.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.filterLabel, { color: theme.textSecondary }]}>Kontrast:</Text>
+              <View style={styles.chipRow}>
+                {[
+                  { label: 'Standard', val: 1.0 },
+                  { label: 'Wyrazisty', val: 1.2 },
+                ].map((c) => (
+                  <TouchableOpacity
+                    key={c.label}
+                    style={[styles.smallChip, contrast === c.val && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+                    onPress={() => setContrast(c.val)}
+                  >
+                    <Text style={[styles.smallChipText, contrast === c.val && { color: '#ffffff', fontWeight: '800' }]}>
+                      {c.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </View>
         </View>
 
-        <View style={styles.subRowItem}>
-          <Text style={styles.subRowLabel}>🌓 Kontrast:</Text>
-          <View style={styles.chipRow}>
-            {[
-              { label: 'Normalny', val: 1.0 },
-              { label: 'Wyrazisty (+20%)', val: 1.2 },
-            ].map((c) => (
-              <TouchableOpacity
-                key={c.label}
-                style={[styles.chip, contrast === c.val && styles.chipActive]}
-                onPress={() => setContrast(c.val)}
-              >
-                <Text style={[styles.chipText, contrast === c.val && styles.chipTextActive]}>
-                  {c.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        {/* Next step CTA */}
+        <TouchableOpacity
+          style={[styles.stepNextBtn, { backgroundColor: theme.primary }]}
+          onPress={() => setActiveStep(2)}
+          activeOpacity={0.88}
+        >
+          <Text style={styles.stepNextBtnText}>Krok 2: Dobierz płótno i rozmiar ➔</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 
-  // Content for Configuration Sections (Fabric, Sizing, Colors, Estimator, CTA)
-  const renderConfigSections = () => (
-    <>
-      {/* Section 2: Canvas Parameters */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🪡 2. Parametry płótna (Kanwa & Gęstość)</Text>
-        <Text style={styles.helperText}>
-          Wybierz rodzaj płótna, gotowy preset gęstości lub wpisz własny dowolny count:
+  // STEP 2: Płótno i Rozmiar
+  const renderStep2 = () => (
+    <View style={styles.stepContainer}>
+      {/* Fabric choice card */}
+      <View style={[styles.cozyCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+        <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+          🪡 Rodzaj kanwy i gęstość ściegów
+        </Text>
+        <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
+          Wybierz tkaninę lub wpisz dowolny własny count:
         </Text>
 
-        {/* Fabric Type Selector */}
+        {/* Fabric Type Pills */}
         <View style={styles.fabricTypeRow}>
           {[
             { id: 'aida', label: 'Kanwa Aida', icon: '◻️' },
             { id: 'evenweave', label: 'Evenweave', icon: '🧵' },
             { id: 'linen', label: 'Len (Linen)', icon: '🌾' },
             { id: 'plastic', label: 'Plastikowa', icon: '🔲' },
-            { id: 'custom', label: 'Własny format', icon: '✏️' },
+            { id: 'custom', label: 'Własny count', icon: '✏️' },
           ].map((ft) => (
             <TouchableOpacity
               key={ft.id}
@@ -474,46 +505,31 @@ export default function ImagePickerScreen() {
               ]}
               onPress={() => {
                 setFabricType(ft.id as any);
-                if (ft.id === 'aida') {
-                  setAidaCount(14);
-                  setIsCustomCount(false);
-                } else if (ft.id === 'evenweave') {
-                  setAidaCount(28);
-                  setIsCustomCount(false);
-                } else if (ft.id === 'linen') {
-                  setAidaCount(32);
-                  setIsCustomCount(false);
-                } else if (ft.id === 'plastic') {
-                  setAidaCount(14);
-                  setIsCustomCount(false);
-                } else if (ft.id === 'custom') {
-                  setIsCustomCount(true);
-                }
+                if (ft.id === 'aida') { setAidaCount(14); setIsCustomCount(false); }
+                else if (ft.id === 'evenweave') { setAidaCount(28); setIsCustomCount(false); }
+                else if (ft.id === 'linen') { setAidaCount(32); setIsCustomCount(false); }
+                else if (ft.id === 'plastic') { setAidaCount(14); setIsCustomCount(false); }
+                else if (ft.id === 'custom') { setIsCustomCount(true); }
               }}
             >
               <Text style={{ fontSize: 13, marginRight: 4 }}>{ft.icon}</Text>
-              <Text
-                style={[
-                  styles.fabricTypeBtnText,
-                  fabricType === ft.id && { color: '#FFFFFF', fontWeight: '800' },
-                ]}
-              >
+              <Text style={[styles.fabricTypeBtnText, fabricType === ft.id && { color: '#ffffff', fontWeight: '800' }]}>
                 {ft.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Preset Counts for chosen fabric */}
+        {/* Fabric Counts Buttons */}
         {!isCustomCount && (
           <View style={styles.buttonRow}>
             {fabricType === 'aida' &&
               [
-                { count: 11, label: '11 ct', desc: 'Duże krzyżyki (4.3 śc/cm)' },
-                { count: 14, label: '14 ct', desc: 'Najpopularniejsza (5.4 śc/cm)' },
-                { count: 16, label: '16 ct', desc: 'Drobny splot (6.3 śc/cm)' },
-                { count: 18, label: '18 ct', desc: 'Bardzo drobny (7.1 śc/cm)' },
-                { count: 20, label: '20 ct', desc: 'Gęsty splot (7.9 śc/cm)' },
+                { count: 11, label: '11 ct', desc: '4.3 śc/cm' },
+                { count: 14, label: '14 ct (Standard)', desc: '5.4 śc/cm' },
+                { count: 16, label: '16 ct', desc: '6.3 śc/cm' },
+                { count: 18, label: '18 ct', desc: '7.1 śc/cm' },
+                { count: 20, label: '20 ct', desc: '7.9 śc/cm' },
               ].map((item) => (
                 <TouchableOpacity
                   key={item.count}
@@ -534,9 +550,9 @@ export default function ImagePickerScreen() {
 
             {fabricType === 'evenweave' &&
               [
-                { count: 25, label: '25 ct', desc: 'Przez 2 nitki = 12.5ct (4.9 śc/cm)' },
-                { count: 28, label: '28 ct', desc: 'Przez 2 nitki = 14ct (5.4 śc/cm)' },
-                { count: 32, label: '32 ct', desc: 'Przez 2 nitki = 16ct (6.3 śc/cm)' },
+                { count: 25, label: '25 ct', desc: '12.5ct eff. (4.9 śc/cm)' },
+                { count: 28, label: '28 ct', desc: '14ct eff. (5.4 śc/cm)' },
+                { count: 32, label: '32 ct', desc: '16ct eff. (6.3 śc/cm)' },
               ].map((item) => (
                 <TouchableOpacity
                   key={item.count}
@@ -557,10 +573,10 @@ export default function ImagePickerScreen() {
 
             {fabricType === 'linen' &&
               [
-                { count: 28, label: '28 ct', desc: 'Przez 2 nitki = 14ct (5.4 śc/cm)' },
-                { count: 32, label: '32 ct', desc: 'Przez 2 nitki = 16ct (6.3 śc/cm)' },
-                { count: 36, label: '36 ct', desc: 'Przez 2 nitki = 18ct (7.1 śc/cm)' },
-                { count: 40, label: '40 ct', desc: 'Przez 2 nitki = 20ct (7.9 śc/cm)' },
+                { count: 28, label: '28 ct', desc: '14ct eff. (5.4 śc/cm)' },
+                { count: 32, label: '32 ct', desc: '16ct eff. (6.3 śc/cm)' },
+                { count: 36, label: '36 ct', desc: '18ct eff. (7.1 śc/cm)' },
+                { count: 40, label: '40 ct', desc: '20ct eff. (7.9 śc/cm)' },
               ].map((item) => (
                 <TouchableOpacity
                   key={item.count}
@@ -581,8 +597,8 @@ export default function ImagePickerScreen() {
 
             {fabricType === 'plastic' &&
               [
-                { count: 10, label: '10 ct', desc: 'Duża kanwa (3.9 śc/cm)' },
-                { count: 14, label: '14 ct', desc: 'Standardowa (5.4 śc/cm)' },
+                { count: 10, label: '10 ct', desc: '3.9 śc/cm' },
+                { count: 14, label: '14 ct', desc: '5.4 śc/cm' },
               ].map((item) => (
                 <TouchableOpacity
                   key={item.count}
@@ -634,18 +650,16 @@ export default function ImagePickerScreen() {
                 {overTwoThreads && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>✓</Text>}
               </View>
               <Text style={[styles.overTwoText, { color: theme.textSecondary }]}>
-                Haft przez 2 nitki osnowy (np. len/evenweave: efektywnie {(aidaCount / 2).toFixed(1)} ct)
+                Haft przez 2 nitki osnowy (efektywnie {(aidaCount / 2).toFixed(1)} ct)
               </Text>
             </TouchableOpacity>
-
-            <Text style={[styles.customCountSummary, { color: theme.primary }]}>
-              Aktualna gęstość: {stitchesPerCm.toFixed(2)} ściegów/cm ({effectiveCount} ct)
-            </Text>
           </View>
         )}
 
-        {/* Canvas Color Selection */}
-        <Text style={[styles.subRowLabel, { marginTop: 14 }]}>Kolor podkładu / kanwy:</Text>
+        {/* Canvas Color */}
+        <Text style={[styles.sectionSubtitleSmall, { color: theme.textPrimary, marginTop: 14 }]}>
+          Kolor kanwy / tła haftu:
+        </Text>
         <View style={styles.canvasColorRow}>
           {[
             { id: 'white', label: 'Biała', color: '#FFFFFF', border: '#E2E8F0' },
@@ -661,60 +675,32 @@ export default function ImagePickerScreen() {
               ]}
               onPress={() => setCanvasColor(c.id as any)}
             >
-              <View
-                style={[
-                  styles.colorSwatch,
-                  { backgroundColor: c.color, borderColor: c.border },
-                ]}
-              />
-              <Text
-                style={[
-                  styles.colorLabel,
-                  canvasColor === c.id && styles.colorLabelActive,
-                ]}
-              >
+              <View style={[styles.colorSwatch, { backgroundColor: c.color, borderColor: c.border }]} />
+              <Text style={[styles.colorLabel, canvasColor === c.id && styles.colorLabelActive]}>
                 {c.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Fabric Margin for framing */}
-        <Text style={[styles.subRowLabel, { marginTop: 14 }]}>Margines na oprawę (z każdej strony):</Text>
-        <View style={styles.chipRow}>
-          {[
-            { label: '3 cm (mały tamborek)', val: 3 },
-            { label: '5 cm (zalecany standard)', val: 5 },
-            { label: '7 cm (do ramki passe-partout)', val: 7 },
-          ].map((m) => (
-            <TouchableOpacity
-              key={m.val}
-              style={[styles.chip, marginCm === m.val && styles.chipActive]}
-              onPress={() => setMarginCm(m.val)}
-            >
-              <Text style={[styles.chipText, marginCm === m.val && styles.chipTextActive]}>
-                {m.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
-      {/* Section 3: Sizing & Canvas Formats */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📐 3. Dobór rozmiaru haftu i formatu płótna</Text>
-        <Text style={styles.helperText}>
-          Wybierz gotową ramkę/tamborek lub zdefiniuj dowolny własny rozmiar haftu:
+      {/* Sizing & Canvas Formats Card */}
+      <View style={[styles.cozyCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+        <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+          📐 Rozmiar haftu i format oprawy
+        </Text>
+        <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
+          Wybierz gotową ramkę, tamborek lub określ własne wymiary w cm bądź ściegach:
         </Text>
 
-        {/* 3 Main Tabs */}
-        <View style={styles.tabContainer}>
+        {/* Sub-tabs for Sizing */}
+        <View style={[styles.tabContainer, { backgroundColor: theme.backgroundAlt }]}>
           <TouchableOpacity
             style={[styles.tab, sizeMode === 'formats' && styles.tabActive]}
             onPress={() => setSizeMode('formats')}
           >
             <Text style={[styles.tabText, sizeMode === 'formats' && styles.tabTextActive]}>
-              🖼️ Formaty i tamborki
+              🖼️ Formaty & tamborki
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -735,13 +721,12 @@ export default function ImagePickerScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Mode 1: Ready Formats & Hoops */}
+        {/* Mode 1: Formats */}
         {sizeMode === 'formats' && (
-          <View style={styles.modeContent}>
-            {/* Filter pills: All / Frames / Hoops */}
+          <View>
             <View style={styles.formatFilterRow}>
               {[
-                { id: 'all', label: 'Wszystkie formaty' },
+                { id: 'all', label: 'Wszystkie' },
                 { id: 'frame', label: '🖼️ Ramki foto' },
                 { id: 'hoop', label: '⭕ Tamborki' },
               ].map((cat) => (
@@ -753,23 +738,15 @@ export default function ImagePickerScreen() {
                   ]}
                   onPress={() => setFormatCategory(cat.id as any)}
                 >
-                  <Text
-                    style={[
-                      styles.formatFilterChipText,
-                      formatCategory === cat.id && styles.formatFilterChipTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.formatFilterChipText, formatCategory === cat.id && styles.formatFilterChipTextActive]}>
                     {cat.label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            {/* Grid of formats */}
             <View style={styles.formatsList}>
-              {CANVAS_FORMATS.filter(
-                (f) => formatCategory === 'all' || f.category === formatCategory
-              ).map((fmt) => {
+              {CANVAS_FORMATS.filter((f) => formatCategory === 'all' || f.category === formatCategory).map((fmt) => {
                 const isSelected = selectedFormatId === fmt.id;
                 const approxStitchesW = Math.round(fmt.widthCm * stitchesPerCm);
                 const approxStitchesH = Math.round(fmt.heightCm * stitchesPerCm);
@@ -794,12 +771,7 @@ export default function ImagePickerScreen() {
                     <View style={styles.formatCardTop}>
                       <Text style={{ fontSize: 18, marginRight: 8 }}>{fmt.icon}</Text>
                       <View style={{ flex: 1 }}>
-                        <Text
-                          style={[
-                            styles.formatCardTitle,
-                            isSelected && { color: theme.primary, fontWeight: '800' },
-                          ]}
-                        >
+                        <Text style={[styles.formatCardTitle, isSelected && { color: theme.primary, fontWeight: '800' }]}>
                           {fmt.name}
                         </Text>
                         <Text style={styles.formatCardDesc}>{fmt.desc}</Text>
@@ -812,7 +784,7 @@ export default function ImagePickerScreen() {
                     </View>
                     <View style={styles.formatCardFooter}>
                       <Text style={[styles.formatCardFooterText, { color: theme.textMuted }]}>
-                        📐 Na kanwie {effectiveCount} ct: ok. {approxStitchesW} × {approxStitchesH} krz.
+                        📐 Na wybranej kanwie {effectiveCount} ct: ok. {approxStitchesW} × {approxStitchesH} krz.
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -822,11 +794,10 @@ export default function ImagePickerScreen() {
           </View>
         )}
 
-        {/* Mode 2: Custom Centimeters */}
+        {/* Mode 2: Custom cm */}
         {sizeMode === 'cm' && (
-          <View style={styles.modeContent}>
-            {/* Quick presets */}
-            <Text style={styles.subRowLabel}>Szybki wybór szerokości (cm):</Text>
+          <View>
+            <Text style={[styles.subRowLabel, { color: theme.textSecondary }]}>Szybki wybór szerokości:</Text>
             <View style={styles.buttonRow}>
               {[10, 15, 20, 25, 30, 40].map((val) => (
                 <TouchableOpacity
@@ -843,26 +814,18 @@ export default function ImagePickerScreen() {
                     }
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.optionButtonText,
-                      parseFloat(customWidthCmInput) === val && styles.optionButtonTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.optionButtonText, parseFloat(customWidthCmInput) === val && styles.optionButtonTextActive]}>
                     {val} cm
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            {/* Custom Input Box */}
             <View style={[styles.customDimensionBox, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}>
               <Text style={[styles.customDimensionHeader, { color: theme.textPrimary }]}>
-                Wpisz dowolny własny rozmiar haftu:
+                Wpisz dowolny rozmiar w centymetrach:
               </Text>
-
               <View style={styles.dimensionInputsRow}>
-                {/* Width */}
                 <View style={styles.dimensionInputGroup}>
                   <Text style={[styles.dimInputLabel, { color: theme.textSecondary }]}>Szerokość</Text>
                   <View style={[styles.dimInputWrapper, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
@@ -885,12 +848,8 @@ export default function ImagePickerScreen() {
                   </View>
                 </View>
 
-                {/* Lock Aspect Button */}
                 <TouchableOpacity
-                  style={[
-                    styles.aspectLockBtn,
-                    lockAspect && { backgroundColor: theme.primary, borderColor: theme.primary },
-                  ]}
+                  style={[styles.aspectLockBtn, lockAspect && { backgroundColor: theme.primary, borderColor: theme.primary }]}
                   onPress={() => setLockAspect(!lockAspect)}
                   activeOpacity={0.8}
                 >
@@ -900,7 +859,6 @@ export default function ImagePickerScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                {/* Height */}
                 <View style={styles.dimensionInputGroup}>
                   <Text style={[styles.dimInputLabel, { color: theme.textSecondary }]}>Wysokość</Text>
                   <View style={[styles.dimInputWrapper, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
@@ -911,37 +869,27 @@ export default function ImagePickerScreen() {
                       editable={!lockAspect}
                       onChangeText={(val) => {
                         setCustomHeightCmInput(val);
-                        const num = parseFloat(val);
-                        if (!isNaN(num) && num > 0 && !lockAspect) {
-                          // Free aspect
-                        }
                       }}
                     />
                     <Text style={[styles.dimUnit, { color: theme.textMuted }]}>cm</Text>
                   </View>
                 </View>
               </View>
-
-              <Text style={[styles.dimensionLiveInfo, { color: theme.primary }]}>
-                🔢 Odpowiada to dokładnie: {estWidthStitches} × {estHeightStitches} krzyżyków na kanwie {effectiveCount} ct
-              </Text>
             </View>
           </View>
         )}
 
         {/* Mode 3: Custom Stitches */}
         {sizeMode === 'stitches' && (
-          <View style={styles.modeContent}>
-            {/* Quick presets */}
-            <Text style={styles.subRowLabel}>Szybki wybór liczby ściegów:</Text>
+          <View>
+            <Text style={[styles.subRowLabel, { color: theme.textSecondary }]}>Szybki wybór liczby ściegów:</Text>
             <View style={styles.buttonRow}>
               {[
-                { label: '⚡ Mini (45x)', val: 45 },
-                { label: '🧵 Mały (60x)', val: 60 },
-                { label: '🧵 Standard (80x)', val: 80 },
-                { label: 'Duży (120x)', val: 120 },
-                { label: 'Szczegółowy (160x)', val: 160 },
-                { label: 'Master (220x)', val: 220 },
+                { label: '45x (Mini)', val: 45 },
+                { label: '60x (Mały)', val: 60 },
+                { label: '80x (Standard)', val: 80 },
+                { label: '120x (Duży)', val: 120 },
+                { label: '160x (Master)', val: 160 },
               ].map((s) => (
                 <TouchableOpacity
                   key={s.val}
@@ -957,26 +905,18 @@ export default function ImagePickerScreen() {
                     }
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.optionButtonText,
-                      parseInt(customWidthStitchesInput, 10) === s.val && styles.optionButtonTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.optionButtonText, parseInt(customWidthStitchesInput, 10) === s.val && styles.optionButtonTextActive]}>
                     {s.label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            {/* Custom Stitches Input Box */}
             <View style={[styles.customDimensionBox, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}>
               <Text style={[styles.customDimensionHeader, { color: theme.textPrimary }]}>
                 Wpisz dokładną siatkę krzyżyków:
               </Text>
-
               <View style={styles.dimensionInputsRow}>
-                {/* Width stitches */}
                 <View style={styles.dimensionInputGroup}>
                   <Text style={[styles.dimInputLabel, { color: theme.textSecondary }]}>Szerokość</Text>
                   <View style={[styles.dimInputWrapper, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
@@ -999,12 +939,8 @@ export default function ImagePickerScreen() {
                   </View>
                 </View>
 
-                {/* Lock Aspect Button */}
                 <TouchableOpacity
-                  style={[
-                    styles.aspectLockBtn,
-                    lockAspect && { backgroundColor: theme.primary, borderColor: theme.primary },
-                  ]}
+                  style={[styles.aspectLockBtn, lockAspect && { backgroundColor: theme.primary, borderColor: theme.primary }]}
                   onPress={() => setLockAspect(!lockAspect)}
                   activeOpacity={0.8}
                 >
@@ -1014,7 +950,6 @@ export default function ImagePickerScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                {/* Height stitches */}
                 <View style={styles.dimensionInputGroup}>
                   <Text style={[styles.dimInputLabel, { color: theme.textSecondary }]}>Wysokość</Text>
                   <View style={[styles.dimInputWrapper, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
@@ -1025,25 +960,39 @@ export default function ImagePickerScreen() {
                       editable={!lockAspect}
                       onChangeText={(val) => {
                         setCustomHeightStitchesInput(val);
-                        const num = parseInt(val, 10);
-                        if (!isNaN(num) && num > 0 && !lockAspect) {
-                          // Free aspect
-                        }
                       }}
                     />
                     <Text style={[styles.dimUnit, { color: theme.textMuted }]}>krz.</Text>
                   </View>
                 </View>
               </View>
-
-              <Text style={[styles.dimensionLiveInfo, { color: theme.primary }]}>
-                📏 Odpowiada to fizycznemu wymiarowi: {estWidthCm} × {estHeightCm} cm na kanwie {effectiveCount} ct
-              </Text>
             </View>
           </View>
         )}
 
-        {/* Selected Canvas & Cutting Summary Banner */}
+        {/* Margin selector */}
+        <Text style={[styles.subRowLabel, { color: theme.textSecondary, marginTop: 14 }]}>
+          Margines płótna na oprawę (z każdej strony):
+        </Text>
+        <View style={styles.chipRow}>
+          {[
+            { label: '3 cm (tamborek)', val: 3 },
+            { label: '5 cm (standard)', val: 5 },
+            { label: '7 cm (passe-partout)', val: 7 },
+          ].map((m) => (
+            <TouchableOpacity
+              key={m.val}
+              style={[styles.chip, marginCm === m.val && styles.chipActive]}
+              onPress={() => setMarginCm(m.val)}
+            >
+              <Text style={[styles.chipText, marginCm === m.val && styles.chipTextActive]}>
+                {m.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Live Size Summary Bar */}
         <View style={[styles.sizeSummaryBanner, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}>
           <Text style={{ fontSize: 18, marginRight: 10 }}>🎯</Text>
           <View style={{ flex: 1 }}>
@@ -1051,17 +1000,35 @@ export default function ImagePickerScreen() {
               Haft: <Text style={{ fontWeight: '800', color: theme.primary }}>{estWidthCm} × {estHeightCm} cm</Text> ({estWidthStitches} × {estHeightStitches} krz.)
             </Text>
             <Text style={[styles.sizeSummarySub, { color: theme.textSecondary }]}>
-              ✂️ Wytnij płótno: <Text style={{ fontWeight: '700', color: theme.textPrimary }}>{cutWidthCm} × {cutHeightCm} cm</Text> (zapas +{marginCm} cm z każdej strony)
+              ✂️ Wytnij płótno: <Text style={{ fontWeight: '700', color: theme.textPrimary }}>{cutWidthCm} × {cutHeightCm} cm</Text> (+{marginCm} cm marginesu)
             </Text>
           </View>
         </View>
-      </View>
 
-      {/* Section 4: Thread Brand & Colors */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🧵 4. Paleta nici i styl haftu</Text>
-        
-        <Text style={styles.subRowLabel}>Producent nici:</Text>
+        {/* Next step CTA */}
+        <TouchableOpacity
+          style={[styles.stepNextBtn, { backgroundColor: theme.primary, marginTop: 16 }]}
+          onPress={() => setActiveStep(3)}
+          activeOpacity={0.88}
+        >
+          <Text style={styles.stepNextBtnText}>Krok 3: Wybierz nici DMC i styl ➔</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // STEP 3: Nici DMC i Styl
+  const renderStep3 = () => (
+    <View style={styles.stepContainer}>
+      <View style={[styles.cozyCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+        <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+          🧵 Paleta mulin i stylizacja haftu
+        </Text>
+        <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
+          Wybierz producenta nici oraz limit kolorów dla optymalnego odwzorowania:
+        </Text>
+
+        <Text style={[styles.subRowLabel, { color: theme.textSecondary }]}>Marka muliny:</Text>
         <View style={styles.buttonRow}>
           {(['DMC', 'Anchor', 'CXC', 'Ariadna', 'Madeira', 'Dimensions'] as const).map((brand) => (
             <TouchableOpacity
@@ -1072,19 +1039,16 @@ export default function ImagePickerScreen() {
               ]}
               onPress={() => setThreadBrand(brand as any)}
             >
-              <Text
-                style={[
-                  styles.optionButtonText,
-                  threadBrand === brand && styles.optionButtonTextActive,
-                ]}
-              >
+              <Text style={[styles.optionButtonText, threadBrand === brand && styles.optionButtonTextActive]}>
                 {brand}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={[styles.subRowLabel, { marginTop: 14 }]}>Liczba kolorów w schemacie:</Text>
+        <Text style={[styles.subRowLabel, { color: theme.textSecondary, marginTop: 14 }]}>
+          Liczba kolorów w schemacie:
+        </Text>
         <View style={styles.buttonRow}>
           {[
             { count: 15, label: '15 (Kameralny)' },
@@ -1102,26 +1066,23 @@ export default function ImagePickerScreen() {
               ]}
               onPress={() => setMaxColors(item.count)}
             >
-              <Text
-                style={[
-                  styles.optionButtonText,
-                  maxColors === item.count && styles.optionButtonTextActive,
-                ]}
-              >
+              <Text style={[styles.optionButtonText, maxColors === item.count && styles.optionButtonTextActive]}>
                 {item.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={[styles.subRowLabel, { marginTop: 14 }]}>Czystość schematu (redukcja szumu):</Text>
+        <Text style={[styles.subRowLabel, { color: theme.textSecondary, marginTop: 14 }]}>
+          Redukcja szumów i pojedynczych krzyżyków (confetti):
+        </Text>
         <View style={styles.chipRow}>
           <TouchableOpacity
             style={[styles.chip, cleanupConfetti && styles.chipActive]}
             onPress={() => setCleanupConfetti(true)}
           >
             <Text style={[styles.chipText, cleanupConfetti && styles.chipTextActive]}>
-              🧹 Czyste plamy (usuń pojedyncze piksele confetti)
+              🧹 Czyste plamy (usuń confetti)
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -1135,356 +1096,430 @@ export default function ImagePickerScreen() {
         </View>
       </View>
 
-      {/* Section 5: Real-time Material & Canvas Estimator Box */}
-      <View style={styles.estimatorCard}>
+      {/* Real-time Material Estimator Box */}
+      <View style={[styles.estimatorCard, { backgroundColor: theme.surface, borderColor: colors.sageBorder }]}>
         <View style={styles.estimatorHeader}>
-          <Text style={styles.estimatorTitle}>📊 Podsumowanie materiałów i wymiarów</Text>
+          <Text style={[styles.estimatorTitle, { color: theme.textPrimary }]}>
+            📊 Podsumowanie materiałowe
+          </Text>
           <View style={styles.livePill}>
             <Text style={styles.livePillText}>Na żywo</Text>
           </View>
         </View>
 
         <View style={styles.estimatorGrid}>
-          <View style={styles.estimatorItem}>
+          <View style={[styles.estimatorItem, { backgroundColor: theme.background, borderColor: theme.surfaceBorder }]}>
             <Text style={styles.estimatorLabel}>Wymiary haftu:</Text>
-            <Text style={styles.estimatorValueBold}>
+            <Text style={[styles.estimatorValueBold, { color: theme.textPrimary }]}>
               {estWidthCm} × {estHeightCm} cm
             </Text>
             <Text style={styles.estimatorSub}>{estWidthStitches} × {estHeightStitches} ściegów</Text>
           </View>
 
           <View style={styles.estimatorItemHighlight}>
-            <Text style={styles.estimatorLabelHighlight}>✂️ Wymiar płótna do ucięcia:</Text>
+            <Text style={styles.estimatorLabelHighlight}>✂️ Wytnij płótno:</Text>
             <Text style={styles.estimatorValueHighlight}>
               {cutWidthCm} × {cutHeightCm} cm
             </Text>
-            <Text style={styles.estimatorSubHighlight}>(zapas +{marginCm} cm z każdej strony)</Text>
+            <Text style={styles.estimatorSubHighlight}>+{marginCm} cm z każdej strony na oprawę</Text>
           </View>
 
-          <View style={styles.estimatorItem}>
-            <Text style={styles.estimatorLabel}>Nici i pasemka:</Text>
-            <Text style={styles.estimatorValueBold}>
+          <View style={[styles.estimatorItem, { backgroundColor: theme.background, borderColor: theme.surfaceBorder }]}>
+            <Text style={styles.estimatorLabel}>Nici muliny:</Text>
+            <Text style={[styles.estimatorValueBold, { color: theme.textPrimary }]}>
               ~{estSkeins} szt. {threadBrand}
             </Text>
             <Text style={styles.estimatorSub}>koszt: ok. {estCostPln} zł</Text>
           </View>
 
-          <View style={styles.estimatorItem}>
+          <View style={[styles.estimatorItem, { backgroundColor: theme.background, borderColor: theme.surfaceBorder }]}>
             <Text style={styles.estimatorLabel}>Łącznie ściegów:</Text>
-            <Text style={styles.estimatorValueBold}>
+            <Text style={[styles.estimatorValueBold, { color: theme.textPrimary }]}>
               {totalEstStitches.toLocaleString('pl-PL')}
             </Text>
             <Text style={styles.estimatorSub}>czas: ok. {estHours} godz.</Text>
           </View>
         </View>
       </View>
-
-      {/* Convert CTA Button */}
-      <TouchableOpacity
-        style={styles.convertButton}
-        onPress={convertImage}
-        activeOpacity={0.88}
-      >
-        <Text style={styles.convertButtonText}>
-          ✨ Przekonwertuj na wzór haftu krzyżykowego
-        </Text>
-      </TouchableOpacity>
-    </>
+    </View>
   );
 
   return (
-    <>
-      <GlobalLoader visible={loading} message="Pikselizacja, redukcja confetti i dobór mulin DMC..." />
-      <ScrollView 
-        style={styles.container}
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <GlobalLoader visible={loading} message="Pikselizacja w przestrzeni CIELAB, redukcja confetti i dobór mulin..." />
+
+      {/* Top 3-Step Wizard Header */}
+      <View style={[styles.wizardHeader, { backgroundColor: theme.surface, borderBottomColor: theme.surfaceBorder }]}>
+        <TouchableOpacity
+          style={[styles.wizardTab, activeStep === 1 && styles.wizardTabActive]}
+          onPress={() => setActiveStep(1)}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.stepNumCircle, activeStep === 1 && { backgroundColor: theme.primary }]}>
+            <Text style={[styles.stepNumText, activeStep === 1 && { color: '#ffffff' }]}>1</Text>
+          </View>
+          <Text style={[styles.wizardStepTitle, activeStep === 1 && { color: theme.primary, fontWeight: '800' }]}>
+            Zdjęcie
+          </Text>
+        </TouchableOpacity>
+
+        <View style={[styles.wizardDivider, { backgroundColor: theme.surfaceBorder }]} />
+
+        <TouchableOpacity
+          style={[styles.wizardTab, activeStep === 2 && styles.wizardTabActive]}
+          onPress={() => setActiveStep(2)}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.stepNumCircle, activeStep === 2 && { backgroundColor: theme.primary }]}>
+            <Text style={[styles.stepNumText, activeStep === 2 && { color: '#ffffff' }]}>2</Text>
+          </View>
+          <Text style={[styles.wizardStepTitle, activeStep === 2 && { color: theme.primary, fontWeight: '800' }]}>
+            Płótno & Wymiar
+          </Text>
+        </TouchableOpacity>
+
+        <View style={[styles.wizardDivider, { backgroundColor: theme.surfaceBorder }]} />
+
+        <TouchableOpacity
+          style={[styles.wizardTab, activeStep === 3 && styles.wizardTabActive]}
+          onPress={() => setActiveStep(3)}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.stepNumCircle, activeStep === 3 && { backgroundColor: theme.primary }]}>
+            <Text style={[styles.stepNumText, activeStep === 3 && { color: '#ffffff' }]}>3</Text>
+          </View>
+          <Text style={[styles.wizardStepTitle, activeStep === 3 && { color: theme.primary, fontWeight: '800' }]}>
+            Nici DMC
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Main Scroll Content */}
+      <ScrollView
+        style={styles.scrollArea}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.mainWrapper, isTabletOrLarger && styles.tabletContainer]}>
-          
-          {isTabletOrLarger ? (
-            /* Tablet / iPad Two-Column Side-by-Side Layout */
-            <View style={styles.twoColumnRow}>
-              <View style={styles.leftColumn}>
-                {renderImageSection()}
-              </View>
-              <View style={styles.rightColumn}>
-                {renderConfigSections()}
-              </View>
-            </View>
-          ) : (
-            /* Mobile Single Column Layout */
-            <View style={styles.content}>
-              {renderImageSection()}
-              {renderConfigSections()}
-            </View>
-          )}
-
+          {activeStep === 1 && renderStep1()}
+          {activeStep === 2 && renderStep2()}
+          {activeStep === 3 && renderStep3()}
         </View>
       </ScrollView>
-    </>
+
+      {/* Persistent Floating Bottom Action Bar */}
+      <View style={[styles.stickyBottomBar, { backgroundColor: theme.surface, borderTopColor: theme.surfaceBorder }]}>
+        <View style={styles.summaryBadge}>
+          <Text style={[styles.summaryBadgeTextBold, { color: theme.textPrimary }]}>
+            📐 {estWidthCm} × {estHeightCm} cm
+          </Text>
+          <Text style={[styles.summaryBadgeTextSub, { color: theme.textSecondary }]}>
+            {estWidthStitches}×{estHeightStitches} krz. • {threadBrand} • {maxColors === 0 ? 'Bez limitu' : `${maxColors} kol.`}
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.convertFloatingBtn, { backgroundColor: theme.primary }]}
+          onPress={convertImage}
+          activeOpacity={0.88}
+        >
+          <Text style={styles.convertFloatingBtnText}>✨ Wygeneruj haft</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  wizardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    ...shadows.card,
+    zIndex: 10,
+  },
+  wizardTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRadius: 12,
+    gap: 6,
+  },
+  wizardTabActive: {
+    backgroundColor: 'rgba(232, 114, 150, 0.08)',
+  },
+  stepNumCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNumText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  wizardStepTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  wizardDivider: {
+    width: 1,
+    height: 20,
+  },
+  scrollArea: {
+    flex: 1,
   },
   scrollContent: {
-    paddingBottom: 50,
+    paddingBottom: 110,
   },
   mainWrapper: {
     width: '100%',
-    alignSelf: 'center',
+    padding: 14,
   },
   tabletContainer: {
-    maxWidth: 1100,
-    paddingHorizontal: 20,
+    maxWidth: 820,
+    alignSelf: 'center',
     paddingTop: 16,
   },
-  twoColumnRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 20,
+  stepContainer: {
+    gap: 14,
   },
-  leftColumn: {
-    flex: 1,
-    maxWidth: '46%',
-  },
-  rightColumn: {
-    flex: 1.2,
-  },
-  content: {
-    padding: 16,
-  },
-  section: {
-    backgroundColor: colors.surface,
-    padding: 18,
+  cozyCard: {
     borderRadius: 18,
-    marginBottom: 16,
+    padding: 16,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
     ...shadows.card,
   },
-  sectionTitle: {
+  cardTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 6,
+    fontWeight: '800',
+    marginBottom: 4,
   },
-  helperText: {
+  cardSubtitle: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 14,
+  },
+  fileImportBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  fileImportIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.card,
+  },
+  fileImportTitle: {
     fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: 12,
-    lineHeight: 18,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  fileImportDesc: {
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  fileImportBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  fileImportBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '800',
   },
   presetsRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   presetCard: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     padding: 6,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  presetCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
   presetImage: {
     width: '100%',
-    height: 70,
+    height: 65,
     borderRadius: 8,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   presetName: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textPrimary,
+    fontSize: 10,
+    fontWeight: '700',
     textAlign: 'center',
   },
-  imagePreviewContainer: {
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  uploadButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  previewContainer: {
     width: '100%',
     height: 220,
     borderRadius: 14,
     overflow: 'hidden',
+    backgroundColor: '#0F172A',
     marginBottom: 12,
-    backgroundColor: colors.backgroundAlt,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    position: 'relative',
   },
-  imagePreview: {
+  previewImage: {
     width: '100%',
     height: '100%',
     resizeMode: 'contain',
   },
-  pickButton: {
-    backgroundColor: colors.backgroundAlt,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+  aspectBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
   },
-  pickButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  subRowContainer: {
-    gap: 12,
-    marginTop: 6,
-  },
-  subRowItem: {},
-  subRowLabel: {
-    fontSize: 13,
+  aspectBadgeText: {
+    color: '#ffffff',
+    fontSize: 11,
     fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 6,
+  },
+  filterSection: {
+    marginTop: 6,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  filterSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  filterLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 4,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
-  chip: {
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: colors.background,
+  smallChip: {
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    borderColor: '#E2E8F0',
   },
-  chipActive: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primaryBorder,
+  smallChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
   },
-  chipText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '500',
+  stepNextBtn: {
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+    ...shadows.card,
   },
-  chipTextActive: {
-    color: colors.primaryDark,
-    fontWeight: '700',
+  stepNextBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
   },
   fabricTypeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
     marginBottom: 12,
   },
   fabricTypeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 14,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    backgroundColor: colors.background,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
   },
   fabricTypeBtnText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  customCountBox: {
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 14,
-    gap: 10,
-  },
-  customCountLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  customCountInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  customCountInput: {
-    width: 90,
-    fontSize: 18,
-    fontWeight: '800',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    textAlign: 'center',
-  },
-  customCountUnit: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  overTwoToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
-    borderWidth: 1.5,
-    borderColor: colors.surfaceBorder,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  overTwoText: {
-    fontSize: 12,
-    flex: 1,
-  },
-  customCountSummary: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 2,
+    color: '#334155',
   },
   buttonRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   fabricOptionButton: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: colors.background,
-    paddingVertical: 12,
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 10,
     paddingHorizontal: 10,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: colors.surfaceBorder,
+    borderColor: '#E2E8F0',
   },
   optionButton: {
     flex: 1,
     minWidth: 70,
-    backgroundColor: colors.background,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: colors.surfaceBorder,
+    borderColor: '#E2E8F0',
     alignItems: 'center',
   },
   smallOptionButton: {
     flex: 1,
     minWidth: 65,
-    backgroundColor: colors.background,
-    paddingVertical: 9,
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 8,
     paddingHorizontal: 8,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: colors.surfaceBorder,
+    borderColor: '#E2E8F0',
     alignItems: 'center',
   },
   optionButtonActive: {
@@ -1492,7 +1527,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
   optionButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.textPrimary,
     textAlign: 'center',
@@ -1501,14 +1536,68 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
   },
   optionButtonSubtext: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: 2,
   },
   optionButtonSubtextActive: {
     color: colors.primaryDark,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  customCountBox: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 10,
+    gap: 8,
+  },
+  customCountLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  customCountInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  customCountInput: {
+    width: 80,
+    fontSize: 16,
+    fontWeight: '800',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    textAlign: 'center',
+  },
+  customCountUnit: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  overTwoToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#94A3B8',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overTwoText: {
+    fontSize: 11,
+    flex: 1,
+  },
+  sectionSubtitleSmall: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
   },
   canvasColorRow: {
     flexDirection: 'row',
@@ -1516,12 +1605,12 @@ const styles = StyleSheet.create({
   },
   colorCard: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#F8FAFC',
     borderRadius: 10,
     padding: 8,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: colors.surfaceBorder,
+    borderColor: '#E2E8F0',
     gap: 4,
   },
   colorCardActive: {
@@ -1529,9 +1618,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
   colorSwatch: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 1,
   },
   colorLabel: {
@@ -1546,187 +1635,50 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.backgroundAlt,
     borderRadius: 12,
-    padding: 4,
-    marginBottom: 14,
+    padding: 3,
+    marginBottom: 12,
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     alignItems: 'center',
     borderRadius: 9,
   },
   tabActive: {
-    backgroundColor: colors.surface,
+    backgroundColor: '#ffffff',
     ...shadows.card,
   },
   tabText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: colors.textMuted,
+    color: '#64748B',
   },
   tabTextActive: {
     color: colors.primaryDark,
-    fontWeight: '700',
-  },
-  modeContent: {},
-  estimatorCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1.5,
-    borderColor: colors.sageBorder,
-    ...shadows.card,
-  },
-  estimatorHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  estimatorTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  livePill: {
-    backgroundColor: colors.sageLight,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.sageBorder,
-  },
-  livePillText: {
-    fontSize: 10,
     fontWeight: '800',
-    color: colors.sageDark,
-  },
-  estimatorGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  estimatorItem: {
-    flex: 1,
-    minWidth: '46%',
-    backgroundColor: colors.background,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-  },
-  estimatorItemHighlight: {
-    width: '100%',
-    backgroundColor: colors.sageLight,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.sageBorder,
-  },
-  estimatorLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    marginBottom: 2,
-  },
-  estimatorLabelHighlight: {
-    fontSize: 12,
-    color: colors.sageDark,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  estimatorValueBold: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-  estimatorValueHighlight: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.sageDark,
-  },
-  estimatorSub: {
-    fontSize: 10,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  estimatorSubHighlight: {
-    fontSize: 11,
-    color: colors.sageDark,
-    marginTop: 2,
-  },
-  convertButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginBottom: 24,
-    ...shadows.glowPrimary,
-  },
-  convertButtonText: {
-    color: colors.textInverted,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  fileImportBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 16,
-    gap: 12,
-  },
-  fileImportIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fileImportTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 2,
-  },
-  fileImportDesc: {
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  fileImportBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-  },
-  fileImportBtnText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '700',
   },
   formatFilterRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 10,
   },
   formatFilterChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    backgroundColor: colors.backgroundAlt,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    borderColor: '#E2E8F0',
   },
   formatFilterChipActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   formatFilterChipText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: '#475569',
   },
   formatFilterChipTextActive: {
     color: '#ffffff',
@@ -1734,68 +1686,65 @@ const styles = StyleSheet.create({
   },
   formatsList: {
     gap: 8,
-    marginBottom: 14,
   },
   formatCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 10,
     borderWidth: 1.5,
-    borderColor: colors.surfaceBorder,
-    ...shadows.card,
+    borderColor: '#E2E8F0',
   },
   formatCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   formatCardTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.textPrimary,
   },
   formatCardDesc: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.textSecondary,
-    marginTop: 1,
   },
   formatCheckmark: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
   },
   formatCardFooter: {
-    marginTop: 8,
-    paddingTop: 6,
+    marginTop: 6,
+    paddingTop: 4,
     borderTopWidth: 1,
-    borderTopColor: colors.surfaceBorder,
+    borderTopColor: '#F1F5F9',
   },
   formatCardFooterText: {
-    fontSize: 11,
+    fontSize: 10,
   },
   customDimensionBox: {
-    padding: 14,
-    borderRadius: 14,
+    padding: 12,
+    borderRadius: 12,
     borderWidth: 1,
-    marginTop: 12,
+    marginTop: 10,
   },
   customDimensionHeader: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   dimensionInputsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   dimensionInputGroup: {
     flex: 1,
   },
   dimInputLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     marginBottom: 4,
   },
@@ -1804,55 +1753,185 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1.5,
     borderRadius: 10,
-    paddingHorizontal: 10,
-    height: 42,
+    paddingHorizontal: 8,
+    height: 38,
   },
   dimTextInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
   dimUnit: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     marginLeft: 4,
   },
   aspectLockBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: colors.surfaceBorder,
-    marginTop: 16,
-    minWidth: 54,
+    borderColor: '#E2E8F0',
+    marginTop: 14,
   },
   aspectLockText: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '700',
-    color: colors.textMuted,
-    marginTop: 2,
+    color: '#64748B',
+    marginTop: 1,
   },
-  dimensionLiveInfo: {
+  subRowLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  chip: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  chipActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryBorder,
+  },
+  chipText: {
     fontSize: 11,
+    color: colors.textSecondary,
     fontWeight: '600',
-    marginTop: 10,
+  },
+  chipTextActive: {
+    color: colors.primaryDark,
+    fontWeight: '800',
   },
   sizeSummaryBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 14,
+    padding: 10,
+    borderRadius: 12,
     borderWidth: 1,
     marginTop: 12,
   },
   sizeSummaryMain: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
   sizeSummarySub: {
-    fontSize: 11,
+    fontSize: 10,
     marginTop: 2,
+  },
+  estimatorCard: {
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1.5,
+    ...shadows.card,
+  },
+  estimatorHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  estimatorTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  livePill: {
+    backgroundColor: colors.sageLight,
+    paddingVertical: 2,
+    paddingHorizontal: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.sageBorder,
+  },
+  livePillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.sageDark,
+  },
+  estimatorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  estimatorItem: {
+    flex: 1,
+    minWidth: '46%',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  estimatorItemHighlight: {
+    width: '100%',
+    backgroundColor: colors.sageLight,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.sageBorder,
+  },
+  estimatorLabel: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginBottom: 1,
+  },
+  estimatorLabelHighlight: {
+    fontSize: 11,
+    color: colors.sageDark,
+    fontWeight: '700',
+    marginBottom: 1,
+  },
+  estimatorValueBold: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  estimatorValueHighlight: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.sageDark,
+  },
+  estimatorSub: {
+    fontSize: 9,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  estimatorSubHighlight: {
+    fontSize: 10,
+    color: colors.sageDark,
+    marginTop: 1,
+  },
+  stickyBottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderTopWidth: 1,
+    ...shadows.card,
+  },
+  summaryBadge: {
+    flex: 1,
+    marginRight: 10,
+  },
+  summaryBadgeTextBold: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  summaryBadgeTextSub: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  convertFloatingBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    ...shadows.glowPrimary,
+  },
+  convertFloatingBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

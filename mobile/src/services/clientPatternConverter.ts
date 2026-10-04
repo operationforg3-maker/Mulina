@@ -4,7 +4,7 @@
  */
 
 import { StoredPattern } from './patternStorage';
-import { findClosestThread, ThreadDef, THREAD_CATALOG } from './threadDatabase';
+import { findClosestThread, ThreadDef, THREAD_CATALOG, rgbToLab, deltaE } from './threadDatabase';
 
 export interface ConvertOptions {
   imageUri: string;
@@ -183,12 +183,22 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
     throw new Error('Środowisko nie obsługuje Canvas (użyj wersji web lub backend)');
   }
 
-  // 2. Map every pixel to closest thread & track frequencies
-  const rawThreadGrid: ThreadDef[][] = [];
-  const threadUsageMap = new Map<string, { thread: ThreadDef; count: number }>();
+  // 2. Preprocess pixels and convert to CIELAB space
+  interface PixelInfo {
+    r: number;
+    g: number;
+    b: number;
+    l: number;
+    a: number;
+    b_val: number;
+  }
+
+  const pixelGrid: PixelInfo[][] = [];
+  const uniqueColorSamples: PixelInfo[] = [];
+  const sampleMap = new Set<string>();
 
   for (let y = 0; y < h; y++) {
-    const row: ThreadDef[] = [];
+    const row: PixelInfo[] = [];
     for (let x = 0; x < w; x++) {
       const idx = (y * w + x) * 4;
       let r = pixelData[idx];
@@ -196,7 +206,7 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
       let b = pixelData[idx + 2];
       const a = pixelData[idx + 3];
 
-      // Handle transparency by blending over canvas color
+      // Blend transparency over canvas color
       if (a < 255) {
         const bgR = canvasColor === 'black' ? 0 : 255;
         const bgG = canvasColor === 'black' ? 0 : 255;
@@ -207,77 +217,168 @@ export async function convertImageClient(options: ConvertOptions): Promise<Store
         b = b * alpha + bgB * (1 - alpha);
       }
 
-      // Brightness adjustment
+      // Brightness & Contrast adjustment
       r = clamp(r * brightness, 0, 255);
       g = clamp(g * brightness, 0, 255);
       b = clamp(b * brightness, 0, 255);
 
-      // Contrast adjustment
       r = clamp((r - 128) * contrast + 128, 0, 255);
       g = clamp((g - 128) * contrast + 128, 0, 255);
       b = clamp((b - 128) * contrast + 128, 0, 255);
 
-      const matched = findClosestThread(r, g, b, brand);
-      row.push(matched);
+      const [L, A, B] = rgbToLab(r, g, b);
+      const pixel: PixelInfo = { r, g, b, l: L, a: A, b_val: B };
+      row.push(pixel);
 
-      const key = `${matched.brand}_${matched.code}`;
-      const existing = threadUsageMap.get(key);
-      if (existing) {
-        existing.count++;
-      } else {
-        threadUsageMap.set(key, { thread: matched, count: 1 });
+      // Quantize key for sampling
+      const colorKey = `${Math.round(r / 6)}_${Math.round(g / 6)}_${Math.round(b / 6)}`;
+      if (!sampleMap.has(colorKey)) {
+        sampleMap.add(colorKey);
+        uniqueColorSamples.push(pixel);
       }
     }
-    rawThreadGrid.push(row);
+    pixelGrid.push(row);
   }
 
-  // 3. Palette Limit & Quantization
-  // Sort threads by popularity
-  const sortedThreads = Array.from(threadUsageMap.values()).sort(
-    (a, b) => b.count - a.count
-  );
-
+  // 3. Perceptual CIELAB Palette Clustering (k-Means++)
   let finalThreads: ThreadDef[] = [];
-  if (maxColors > 0 && sortedThreads.length > maxColors) {
-    // Keep only top maxColors
-    finalThreads = sortedThreads.slice(0, maxColors).map((item) => item.thread);
+  const targetK = maxColors > 0 ? Math.min(maxColors, 150) : 0;
+
+  if (targetK > 0 && uniqueColorSamples.length > targetK) {
+    // k-means++ in CIELAB space
+    const centroids: PixelInfo[] = [];
+    centroids.push(uniqueColorSamples[Math.floor(uniqueColorSamples.length / 2)]);
+
+    while (centroids.length < targetK) {
+      let maxDist = -1;
+      let bestCand = uniqueColorSamples[0];
+      const step = Math.max(1, Math.floor(uniqueColorSamples.length / 200));
+
+      for (let i = 0; i < uniqueColorSamples.length; i += step) {
+        const p = uniqueColorSamples[i];
+        let minDist = Infinity;
+        for (const c of centroids) {
+          const dL = p.l - c.l;
+          const dA = p.a - c.a;
+          const dB = p.b_val - c.b_val;
+          const dist = dL * dL + dA * dA + dB * dB;
+          if (dist < minDist) minDist = dist;
+        }
+        if (minDist > maxDist) {
+          maxDist = minDist;
+          bestCand = p;
+        }
+      }
+      centroids.push({ ...bestCand });
+    }
+
+    // 8 Iterations of k-means clustering
+    for (let iter = 0; iter < 8; iter++) {
+      const clusters: PixelInfo[][] = Array.from({ length: targetK }, () => []);
+      for (const p of uniqueColorSamples) {
+        let minDist = Infinity;
+        let bestIdx = 0;
+        for (let j = 0; j < targetK; j++) {
+          const c = centroids[j];
+          const dL = p.l - c.l;
+          const dA = p.a - c.a;
+          const dB = p.b_val - c.b_val;
+          const dist = dL * dL + dA * dA + dB * dB;
+          if (dist < minDist) {
+            minDist = dist;
+            bestIdx = j;
+          }
+        }
+        clusters[bestIdx].push(p);
+      }
+
+      for (let j = 0; j < targetK; j++) {
+        const cl = clusters[j];
+        if (cl.length > 0) {
+          let sumL = 0, sumA = 0, sumB = 0, sumR = 0, sumG = 0, sumB_rgb = 0;
+          for (const item of cl) {
+            sumL += item.l;
+            sumA += item.a;
+            sumB += item.b_val;
+            sumR += item.r;
+            sumG += item.g;
+            sumB_rgb += item.b;
+          }
+          centroids[j] = {
+            l: sumL / cl.length,
+            a: sumA / cl.length,
+            b_val: sumB / cl.length,
+            r: Math.round(sumR / cl.length),
+            g: Math.round(sumG / cl.length),
+            b: Math.round(sumB_rgb / cl.length),
+          };
+        }
+      }
+    }
+
+    // Map centroids to distinct threads
+    const chosenCodes = new Set<string>();
+    for (const c of centroids) {
+      const th = findClosestThread(c.r, c.g, c.b, brand);
+      if (!chosenCodes.has(th.code)) {
+        chosenCodes.add(th.code);
+        finalThreads.push(th);
+      }
+    }
+
+    // If duplicates left us with fewer than targetK, fill with next best threads
+    if (finalThreads.length < targetK) {
+      const allBrandThreads = THREAD_CATALOG.filter((t) => t.brand === brand);
+      for (const t of allBrandThreads) {
+        if (!chosenCodes.has(t.code)) {
+          chosenCodes.add(t.code);
+          finalThreads.push(t);
+          if (finalThreads.length >= targetK) break;
+        }
+      }
+    }
   } else {
-    finalThreads = sortedThreads.map((item) => item.thread);
+    // Unlimited mode or small palette
+    const chosenCodes = new Set<string>();
+    for (const p of uniqueColorSamples) {
+      const th = findClosestThread(p.r, p.g, p.b, brand);
+      if (!chosenCodes.has(th.code)) {
+        chosenCodes.add(th.code);
+        finalThreads.push(th);
+        if (maxColors > 0 && finalThreads.length >= maxColors) break;
+      }
+    }
   }
 
-  // Build palette map: "brand_code" -> paletteIndex
-  const paletteIndexMap = new Map<string, number>();
-  finalThreads.forEach((th, idx) => {
-    paletteIndexMap.set(`${th.brand}_${th.code}`, idx);
+  // Precompute CIELAB coordinates for final palette for fast distance checks
+  const paletteLab = finalThreads.map((t) => {
+    const [l, a, b_val] = rgbToLab(t.r, t.g, t.b);
+    return { l: t.l ?? l, a: t.a ?? a, b: t.b_val ?? b_val };
   });
 
-  // 4. Construct numeric grid (remapping pixels to allowed palette)
+  // 4. Construct Numeric Grid (mapping every pixel to closest thread in CIELAB space)
   let numericGrid: number[][] = [];
   for (let y = 0; y < h; y++) {
     const row: number[] = [];
     for (let x = 0; x < w; x++) {
-      const th = rawThreadGrid[y][x];
-      const key = `${th.brand}_${th.code}`;
+      const p = pixelGrid[y][x];
 
-      if (paletteIndexMap.has(key)) {
-        row.push(paletteIndexMap.get(key)!);
-      } else {
-        // Remap to the closest among the allowed finalThreads
-        let minD = Infinity;
-        let bestIdx = 0;
-        for (let i = 0; i < finalThreads.length; i++) {
-          const cand = finalThreads[i];
-          const dR = cand.r - th.r;
-          const dG = cand.g - th.g;
-          const dB = cand.b - th.b;
-          const d = dR * dR + dG * dG + dB * dB;
-          if (d < minD) {
-            minD = d;
-            bestIdx = i;
-          }
+      let minDist = Infinity;
+      let bestIdx = 0;
+
+      for (let i = 0; i < finalThreads.length; i++) {
+        const tLab = paletteLab[i];
+        const dL = p.l - tLab.l;
+        const dA = p.a - tLab.a;
+        const dB = p.b_val - tLab.b;
+        const dist = dL * dL + dA * dA + dB * dB;
+
+        if (dist < minDist) {
+          minDist = dist;
+          bestIdx = i;
         }
-        row.push(bestIdx);
       }
+      row.push(bestIdx);
     }
     numericGrid.push(row);
   }

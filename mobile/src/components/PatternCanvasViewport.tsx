@@ -85,12 +85,19 @@ export default function PatternCanvasViewport({
   // Mutable refs for high-frequency interaction without re-render lag
   const transformRef = useRef({ scale: 1.0, panX: 40, panY: 40 });
   const isDraggingRef = useRef(false);
-  const dragModeRef = useRef<'pan' | 'stitch'>('pan');
+  const dragModeRef = useRef<'pan' | 'stitch' | 'pending'>('pan');
   const stitchDragActionRef = useRef<'mark' | 'unmark'>('mark');
   const visitedStitchCellsRef = useRef<Set<string>>(new Set());
   const lastPointerRef = useRef({ x: 0, y: 0 });
-  const touchDistanceRef = useRef<number | null>(null);
   const initialFitDoneRef = useRef(false);
+
+  // Multi-Touch & Anti-Accidental-Stitch Gesture Shield Refs
+  const touchCountRef = useRef(0);
+  const touchDistanceRef = useRef<number | null>(null);
+  const lastTouchMidRef = useRef<{ x: number; y: number } | null>(null);
+  const isMultiTouchGestureRef = useRef(false);
+  const multiTouchCooldownUntilRef = useRef(0);
+  const pendingTapRef = useRef<{ r: number; c: number; x: number; y: number; time: number; pointerId: number } | null>(null);
 
   // Sync state to ref
   useEffect(() => {
@@ -517,6 +524,20 @@ export default function PatternCanvasViewport({
 
   // Web Pointer & Touch Event Handlers
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // If in gesture cooldown (e.g. within 400ms of lifting 2 fingers), reject!
+    if (Date.now() < multiTouchCooldownUntilRef.current) {
+      pendingTapRef.current = null;
+      dragModeRef.current = 'pan';
+      return;
+    }
+
+    // If 2+ touches are already on screen or multi-touch gesture is active, pan only!
+    if (touchCountRef.current >= 2 || isMultiTouchGestureRef.current) {
+      pendingTapRef.current = null;
+      dragModeRef.current = 'pan';
+      return;
+    }
+
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -524,36 +545,53 @@ export default function PatternCanvasViewport({
     lastPointerRef.current = { x, y };
     isDraggingRef.current = true;
 
-    // Check if middle click, spacebar, or scroll mode -> Pan mode
+    const isMouse = e.pointerType === 'mouse';
+    // Pan mode condition: middle button, shift key, or inactive stitch tool
     const isPanMode = e.button === 1 || e.shiftKey || (!stitchLock && activeTool === 'stitch') || activeTool !== 'stitch';
 
     if (isPanMode) {
       dragModeRef.current = 'pan';
+      pendingTapRef.current = null;
     } else {
-      // 1-Finger Stitching drag mode
-      dragModeRef.current = 'stitch';
-      visitedStitchCellsRef.current.clear();
-
       const { scale: curScale, panX: curPanX, panY: curPanY } = transformRef.current;
       const cellSize = BASE_CELL * curScale;
 
       const c = Math.floor((x - curPanX) / cellSize);
       const r = Math.floor((y - curPanY) / cellSize);
 
-      if (r >= 0 && r < gridH && c >= 0 && c < gridW) {
-        if (grid[r][c] === -1 || grid[r][c] === undefined) {
-          // Empty unstitched canvas margin - do not toggle
-          return;
+      const isValidCell = r >= 0 && r < gridH && c >= 0 && c < gridW && grid[r]?.[c] !== -1 && grid[r]?.[c] !== undefined;
+
+      if (isMouse) {
+        // Desktop mouse: standard immediate interaction
+        dragModeRef.current = 'stitch';
+        visitedStitchCellsRef.current.clear();
+
+        if (isValidCell) {
+          const currentlyDone = completedStitches[r]?.[c] || false;
+          stitchDragActionRef.current = currentlyDone ? 'unmark' : 'mark';
+          visitedStitchCellsRef.current.add(`${r}_${c}`);
+
+          if (activeTool === 'stitch') {
+            onCellClick(r, c);
+          } else if (activeTool === 'picker' && onPickColor) {
+            onPickColor(grid[r][c]);
+          }
         }
-
-        const currentlyDone = completedStitches[r]?.[c] || false;
-        stitchDragActionRef.current = currentlyDone ? 'unmark' : 'mark';
-        visitedStitchCellsRef.current.add(`${r}_${c}`);
-
-        if (activeTool === 'stitch') {
-          onCellClick(r, c);
-        } else if (activeTool === 'picker' && onPickColor) {
-          onPickColor(grid[r][c]);
+      } else {
+        // Mobile Touch: NEVER mark immediately on pointerdown!
+        // Record pending tap candidate and confirm ONLY on clean pointerup
+        dragModeRef.current = 'pending';
+        if (isValidCell) {
+          pendingTapRef.current = {
+            r,
+            c,
+            x,
+            y,
+            time: Date.now(),
+            pointerId: e.pointerId,
+          };
+        } else {
+          pendingTapRef.current = null;
         }
       }
     }
@@ -561,6 +599,12 @@ export default function PatternCanvasViewport({
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current) return;
+
+    // Multi-touch shield: abort if multi-finger gesture active or cooldown
+    if (touchCountRef.current >= 2 || isMultiTouchGestureRef.current || Date.now() < multiTouchCooldownUntilRef.current) {
+      pendingTapRef.current = null;
+      return;
+    }
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -577,6 +621,29 @@ export default function PatternCanvasViewport({
       transformRef.current.panY = nextPanY;
       setPanX(nextPanX);
       setPanY(nextPanY);
+    } else if (dragModeRef.current === 'pending') {
+      // Touch is in pending tap state; check if user has moved finger > 10px
+      if (pendingTapRef.current) {
+        const distFromStart = Math.hypot(x - pendingTapRef.current.x, y - pendingTapRef.current.y);
+        if (distFromStart > 10) {
+          // Finger moved significantly: this is a DRAG, not a tap!
+          const startCell = pendingTapRef.current;
+          pendingTapRef.current = null;
+
+          if (activeTool === 'stitch' && stitchLock) {
+            // Intentional 1-finger drag-stitching
+            dragModeRef.current = 'stitch';
+            visitedStitchCellsRef.current.clear();
+            const currentlyDone = completedStitches[startCell.r]?.[startCell.c] || false;
+            stitchDragActionRef.current = currentlyDone ? 'unmark' : 'mark';
+            visitedStitchCellsRef.current.add(`${startCell.r}_${startCell.c}`);
+            onCellDragMark([{ r: startCell.r, c: startCell.c }], stitchDragActionRef.current);
+          } else {
+            // Pan mode
+            dragModeRef.current = 'pan';
+          }
+        }
+      }
     } else if (dragModeRef.current === 'stitch' && activeTool === 'stitch') {
       // Continuous paint marking along pointer path
       const { scale: curScale, panX: curPanX, panY: curPanY } = transformRef.current;
@@ -585,7 +652,7 @@ export default function PatternCanvasViewport({
       const c = Math.floor((x - curPanX) / cellSize);
       const r = Math.floor((y - curPanY) / cellSize);
 
-      if (r >= 0 && r < gridH && c >= 0 && c < gridW && grid[r][c] !== -1 && grid[r][c] !== undefined) {
+      if (r >= 0 && r < gridH && c >= 0 && c < gridW && grid[r]?.[c] !== -1 && grid[r]?.[c] !== undefined) {
         const key = `${r}_${c}`;
         if (!visitedStitchCellsRef.current.has(key)) {
           visitedStitchCellsRef.current.add(key);
@@ -595,48 +662,126 @@ export default function PatternCanvasViewport({
     }
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     isDraggingRef.current = false;
-    touchDistanceRef.current = null;
+
+    // Check if we have a valid, clean single-finger tap to execute
+    if (
+      pendingTapRef.current &&
+      Date.now() >= multiTouchCooldownUntilRef.current &&
+      !isMultiTouchGestureRef.current &&
+      touchCountRef.current <= 1
+    ) {
+      const { r, c, time, x: startX, y: startY } = pendingTapRef.current;
+      const duration = Date.now() - time;
+
+      const rect = e.currentTarget.getBoundingClientRect();
+      const endX = e.clientX - rect.left;
+      const endY = e.clientY - rect.top;
+      const dist = Math.hypot(endX - startX, endY - startY);
+
+      // Clean tap threshold: < 400ms duration and < 12px total movement
+      if (duration < 400 && dist < 12) {
+        if (activeTool === 'stitch') {
+          onCellClick(r, c);
+        } else if (activeTool === 'picker' && onPickColor) {
+          onPickColor(grid[r][c]);
+        }
+      }
+    }
+
+    pendingTapRef.current = null;
+    dragModeRef.current = 'pan';
   };
 
   // Touch handlers for Mobile Pinch Zoom & 2-finger Pan
   const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 2) {
+    touchCountRef.current = e.touches.length;
+
+    if (e.touches.length >= 2) {
+      // 2+ fingers detected: immediately cancel any pending tap or drag-stitch!
+      pendingTapRef.current = null;
+      isMultiTouchGestureRef.current = true;
+      dragModeRef.current = 'pan';
+      visitedStitchCellsRef.current.clear();
+
       const t1 = e.touches[0];
       const t2 = e.touches[1];
       const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
       touchDistanceRef.current = dist;
-      dragModeRef.current = 'pan';
+
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        lastTouchMidRef.current = {
+          x: (t1.clientX + t2.clientX) / 2 - rect.left,
+          y: (t1.clientY + t2.clientY) / 2 - rect.top,
+        };
+      }
     } else if (e.touches.length === 3 && onRedo) {
       // 3 fingers tap = Redo
+      pendingTapRef.current = null;
+      multiTouchCooldownUntilRef.current = Date.now() + 500;
       onRedo();
     }
   };
 
   const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 2 && touchDistanceRef.current !== null && containerRef.current) {
+    if (e.touches.length === 2 && containerRef.current) {
+      // Ensure multi-touch shield remains active
+      pendingTapRef.current = null;
+      isMultiTouchGestureRef.current = true;
+      dragModeRef.current = 'pan';
+
       const t1 = e.touches[0];
       const t2 = e.touches[1];
-      const newDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-
-      const ratio = newDist / touchDistanceRef.current;
-      touchDistanceRef.current = newDist;
+      const curDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
 
       const rect = containerRef.current.getBoundingClientRect();
-      const midX = (t1.clientX + t2.clientX) / 2 - rect.left;
-      const midY = (t1.clientY + t2.clientY) / 2 - rect.top;
+      const curMidX = (t1.clientX + t2.clientX) / 2 - rect.left;
+      const curMidY = (t1.clientY + t2.clientY) / 2 - rect.top;
 
-      const { scale: curScale, panX: curPanX, panY: curPanY } = transformRef.current;
-      const nextScale = Math.max(0.08, Math.min(12.0, curScale * ratio));
+      if (touchDistanceRef.current !== null && lastTouchMidRef.current !== null) {
+        const prevDist = touchDistanceRef.current;
+        const prevMid = lastTouchMidRef.current;
 
-      const nextPanX = midX - (midX - curPanX) * (nextScale / curScale);
-      const nextPanY = midY - (midY - curPanY) * (nextScale / curScale);
+        // Pan delta from midpoint translation
+        const deltaPanX = curMidX - prevMid.x;
+        const deltaPanY = curMidY - prevMid.y;
 
-      transformRef.current = { scale: nextScale, panX: nextPanX, panY: nextPanY };
-      setScale(nextScale);
-      setPanX(nextPanX);
-      setPanY(nextPanY);
+        // Zoom scale ratio from pinch distance change
+        const scaleRatio = prevDist > 5 ? (curDist / prevDist) : 1;
+        const { scale: curScale, panX: curPanX, panY: curPanY } = transformRef.current;
+        const nextScale = Math.max(0.08, Math.min(12.0, curScale * scaleRatio));
+
+        // Combined: translate with two fingers + zoom centered on touch midpoint
+        const nextPanX = curPanX + deltaPanX + (curMidX - curPanX) * (1 - nextScale / curScale);
+        const nextPanY = curPanY + deltaPanY + (curMidY - curPanY) * (1 - nextScale / curScale);
+
+        transformRef.current = { scale: nextScale, panX: nextPanX, panY: nextPanY };
+        setScale(nextScale);
+        setPanX(nextPanX);
+        setPanY(nextPanY);
+      }
+
+      touchDistanceRef.current = curDist;
+      lastTouchMidRef.current = { x: curMidX, y: curMidY };
+    }
+  };
+
+  const onTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    touchCountRef.current = e.touches.length;
+
+    if (isMultiTouchGestureRef.current) {
+      // Multi-touch just ended or dropped to 1 finger
+      // Set 400ms cooldown to completely swallow trailing finger release events!
+      multiTouchCooldownUntilRef.current = Date.now() + 400;
+      pendingTapRef.current = null;
+
+      if (e.touches.length === 0) {
+        isMultiTouchGestureRef.current = false;
+        touchDistanceRef.current = null;
+        lastTouchMidRef.current = null;
+      }
     }
   };
 
@@ -687,8 +832,11 @@ export default function PatternCanvasViewport({
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
         >
           <canvas
             ref={canvasRef as any}

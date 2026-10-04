@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { View, StyleSheet, Platform, useWindowDimensions, Text, TouchableOpacity } from 'react-native';
 
 export interface ThreadItem {
@@ -51,7 +51,16 @@ export interface PatternCanvasViewportProps {
   themeMode?: 'light' | 'oled' | 'night' | 'cozy' | 'redlight';
 }
 
-export default function PatternCanvasViewport({
+export interface PatternCanvasViewportRef {
+  zoomIn: () => void;
+  zoomOut: () => void;
+  zoomFit: () => void;
+  zoomFill: () => void;
+  zoom100: () => void;
+  getScale: () => number;
+}
+
+const PatternCanvasViewport = forwardRef<PatternCanvasViewportRef, PatternCanvasViewportProps>(function PatternCanvasViewport({
   grid,
   width: gridW,
   height: gridH,
@@ -72,7 +81,7 @@ export default function PatternCanvasViewport({
   onUndo,
   onRedo,
   themeMode = 'light',
-}: PatternCanvasViewportProps) {
+}: PatternCanvasViewportProps, ref) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { width: winW, height: winH } = useWindowDimensions();
@@ -107,21 +116,21 @@ export default function PatternCanvasViewport({
   // Base stitch cell size in virtual pixels
   const BASE_CELL = 24;
 
-  // Fit to screen on initial mount
+  // Fit to screen on initial mount (maximizes pattern in available space without artificial 1.2 cap)
   useEffect(() => {
     if (!initialFitDoneRef.current && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const availW = rect.width > 0 ? rect.width : winW;
-      const availH = rect.height > 0 ? rect.height : (winH - 260);
+      const availH = rect.height > 0 ? rect.height : (winH - 220);
 
       const gridPixelW = gridW * BASE_CELL;
       const gridPixelH = gridH * BASE_CELL;
 
-      const fitScale = Math.min((availW - 40) / gridPixelW, (availH - 40) / gridPixelH, 1.2);
-      const initialScale = Math.max(0.15, fitScale);
+      const fitScale = Math.min((availW - 16) / gridPixelW, (availH - 16) / gridPixelH);
+      const initialScale = Math.max(0.12, fitScale);
 
-      const initialPanX = Math.max(10, (availW - gridPixelW * initialScale) / 2);
-      const initialPanY = Math.max(10, (availH - gridPixelH * initialScale) / 2);
+      const initialPanX = (availW - gridPixelW * initialScale) / 2;
+      const initialPanY = (availH - gridPixelH * initialScale) / 2;
 
       setScale(initialScale);
       setPanX(initialPanX);
@@ -453,10 +462,10 @@ export default function PatternCanvasViewport({
       if (!initialFitDoneRef.current && rect.width > 50 && rect.height > 50) {
         const gridPixelW = gridW * BASE_CELL;
         const gridPixelH = gridH * BASE_CELL;
-        const fitScale = Math.min((rect.width - 40) / gridPixelW, (rect.height - 40) / gridPixelH, 1.2);
-        const initialScale = Math.max(0.15, fitScale);
-        const initialPanX = Math.max(10, (rect.width - gridPixelW * initialScale) / 2);
-        const initialPanY = Math.max(10, (rect.height - gridPixelH * initialScale) / 2);
+        const fitScale = Math.min((rect.width - 16) / gridPixelW, (rect.height - 16) / gridPixelH);
+        const initialScale = Math.max(0.12, fitScale);
+        const initialPanX = (rect.width - gridPixelW * initialScale) / 2;
+        const initialPanY = (rect.height - gridPixelH * initialScale) / 2;
 
         setScale(initialScale);
         setPanX(initialPanX);
@@ -785,33 +794,83 @@ export default function PatternCanvasViewport({
     }
   };
 
-  // Zoom Button Controls (+ / - / Fit)
-  const handleZoomIn = () => {
-    const next = Math.min(12.0, scale * 1.35);
+  // Zoom Button Controls (+ / - / Fit / Fill)
+  const handleZoomIn = useCallback(() => {
+    const next = Math.min(12.0, transformRef.current.scale * 1.35);
     setScale(next);
     transformRef.current.scale = next;
-  };
+    renderCanvas();
+  }, [renderCanvas]);
 
-  const handleZoomOut = () => {
-    const next = Math.max(0.08, scale / 1.35);
+  const handleZoomOut = useCallback(() => {
+    const next = Math.max(0.06, transformRef.current.scale / 1.35);
     setScale(next);
     transformRef.current.scale = next;
-  };
+    renderCanvas();
+  }, [renderCanvas]);
 
-  const handleZoomFit = () => {
+  const handleZoomFit = useCallback(() => {
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      const fitScale = Math.min((rect.width - 60) / (gridW * BASE_CELL), (rect.height - 60) / (gridH * BASE_CELL), 1.2);
-      const s = Math.max(0.12, fitScale);
-      const px = Math.max(20, (rect.width - gridW * BASE_CELL * s) / 2);
-      const py = Math.max(20, (rect.height - gridH * BASE_CELL * s) / 2);
+      const gridPixelW = gridW * BASE_CELL;
+      const gridPixelH = gridH * BASE_CELL;
+      const fitScale = Math.min((rect.width - 20) / gridPixelW, (rect.height - 20) / gridPixelH);
+      const s = Math.max(0.08, fitScale);
+      const px = (rect.width - gridPixelW * s) / 2;
+      const py = (rect.height - gridPixelH * s) / 2;
 
       setScale(s);
       setPanX(px);
       setPanY(py);
       transformRef.current = { scale: s, panX: px, panY: py };
+      renderCanvas();
     }
-  };
+  }, [gridW, gridH, renderCanvas]);
+
+  const handleZoomFill = useCallback(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const gridPixelW = gridW * BASE_CELL;
+      const gridPixelH = gridH * BASE_CELL;
+      // Scales pattern to cover 100% of container area edge-to-edge
+      const fillScale = Math.max(rect.width / gridPixelW, rect.height / gridPixelH);
+      const s = Math.max(0.1, fillScale);
+      const px = (rect.width - gridPixelW * s) / 2;
+      const py = (rect.height - gridPixelH * s) / 2;
+
+      setScale(s);
+      setPanX(px);
+      setPanY(py);
+      transformRef.current = { scale: s, panX: px, panY: py };
+      renderCanvas();
+    }
+  }, [gridW, gridH, renderCanvas]);
+
+  const handleZoom100 = useCallback(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const gridPixelW = gridW * BASE_CELL;
+      const gridPixelH = gridH * BASE_CELL;
+      const s = 1.0;
+      const px = (rect.width - gridPixelW * s) / 2;
+      const py = (rect.height - gridPixelH * s) / 2;
+
+      setScale(s);
+      setPanX(px);
+      setPanY(py);
+      transformRef.current = { scale: s, panX: px, panY: py };
+      renderCanvas();
+    }
+  }, [gridW, gridH, renderCanvas]);
+
+  useImperativeHandle(ref, () => ({
+    zoomIn: handleZoomIn,
+    zoomOut: handleZoomOut,
+    zoomFit: handleZoomFit,
+    zoomFill: handleZoomFill,
+    zoom100: handleZoom100,
+    getScale: () => transformRef.current.scale,
+  }), [handleZoomIn, handleZoomOut, handleZoomFit, handleZoomFill, handleZoom100]);
 
   return (
     <View style={styles.outerContainer}>
@@ -847,7 +906,7 @@ export default function PatternCanvasViewport({
             }}
           />
 
-          {/* Quick HUD Navigation Pill (Zoom In, Zoom Out, Fit, Gestures hint) */}
+          {/* Quick HUD Navigation Pill (Zoom In, Zoom Out, Fit, Fill) */}
           <div
             style={{
               position: 'absolute',
@@ -855,12 +914,12 @@ export default function PatternCanvasViewport({
               left: 16,
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
-              background: 'rgba(255, 255, 255, 0.92)',
+              gap: 6,
+              background: 'rgba(255, 255, 255, 0.94)',
               backdropFilter: 'blur(10px)',
               padding: '6px 12px',
               borderRadius: 24,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+              boxShadow: '0 4px 18px rgba(0,0,0,0.15)',
               border: '1px solid rgba(217, 119, 127, 0.25)',
               zIndex: 10,
             }}
@@ -872,7 +931,11 @@ export default function PatternCanvasViewport({
             >
               🔍−
             </button>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#37474F', minWidth: 42, textAlign: 'center' }}>
+            <span 
+              onClick={handleZoom100}
+              style={{ fontSize: 12, fontWeight: 700, color: '#37474F', minWidth: 42, textAlign: 'center', cursor: 'pointer' }}
+              title="Kliknij, aby ustawić 100%"
+            >
               {Math.round(scale * 100)}%
             </span>
             <button
@@ -885,9 +948,16 @@ export default function PatternCanvasViewport({
             <button
               onClick={handleZoomFit}
               style={{ ...hudBtnStyle, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}
-              title="Dopasuj cały wzór do ekranu"
+              title="Dopasuj wzór do okna"
             >
-              ⤢ Całość
+              ⤢ Dopasuj
+            </button>
+            <button
+              onClick={handleZoomFill}
+              style={{ ...hudBtnStyle, padding: '4px 10px', fontSize: 11, fontWeight: 700, background: '#EAF7EE', borderColor: '#7E9F88', color: '#275239' }}
+              title="Wypełnij cały obszar (bez pustych marginesów)"
+            >
+              ⛶ Wypełnij całość
             </button>
           </div>
         </div>
@@ -898,7 +968,9 @@ export default function PatternCanvasViewport({
       )}
     </View>
   );
-}
+});
+
+export default PatternCanvasViewport;
 
 const hudBtnStyle: any = {
   background: '#FFF3F4',

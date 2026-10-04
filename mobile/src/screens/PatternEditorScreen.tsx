@@ -19,7 +19,7 @@ import { DEMO_PATTERN } from '../services/demoPattern';
 import { colors, shadows } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
-import PatternCanvasViewport from '../components/PatternCanvasViewport';
+import PatternCanvasViewport, { PatternCanvasViewportRef } from '../components/PatternCanvasViewport';
 import {
   FlowerIcon,
   CraftShopIcon,
@@ -123,6 +123,15 @@ export default function PatternEditorScreen() {
   const [viewMode, setViewMode] = useState<'stitches' | 'symbols' | 'colors'>('stitches');
   const [highlightColorIndex, setHighlightColorIndex] = useState<number | null>(null);
   
+  // Thread Panel visibility (Collapsible left sidebar on tablet/desktop, collapsible bottom bar on mobile)
+  const [showThreadPanel, setShowThreadPanel] = useState(true);
+
+  // Fullscreen / Focus Mode (hides top headers to allow pattern to fill 100% of display)
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  // Canvas Viewport Ref for hardware-accelerated zoom/fit/fill controls
+  const viewportRef = useRef<PatternCanvasViewportRef>(null);
+
   // Tools: stitch, box_select, parking, picker, pencil, eraser, fill
   const [activeTool, setActiveTool] = useState<'stitch' | 'box_select' | 'parking' | 'pencil' | 'eraser' | 'fill' | 'picker'>('stitch');
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
@@ -623,6 +632,7 @@ export default function PatternEditorScreen() {
   // Render High-Performance Hardware-Accelerated Canvas Viewport
   const renderCanvasGrid = () => (
     <PatternCanvasViewport
+      ref={viewportRef}
       grid={grid}
       width={width}
       height={height}
@@ -675,87 +685,106 @@ export default function PatternEditorScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Top Header - Soft Pastel Embroidery Atmosphere with Theme & 1-Click Shop */}
-      <View style={[styles.header, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity 
-            onPress={() => navigation.goBack()} 
-            style={[styles.backBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]} 
-            activeOpacity={0.8}
-            accessibilityLabel="Powrót"
-          >
-            <Text style={[styles.backBtnText, { color: theme.textPrimary }]}>
-              {isTabletOrLarger ? '← Wróć' : '←'}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.titleContainer}>
-            <Text style={[styles.headerTitle, { color: theme.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">
-              {pattern.name}
-            </Text>
-            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
-              {width}×{height} ({pattern.dimensions.width_cm}×{pattern.dimensions.height_cm} cm) • {color_palette.length} kol.
-            </Text>
-          </View>
-
-          <View style={styles.headerActionsGroup}>
-            {/* Theme switcher (Cozy / OLED Dark / Eye Guard) */}
+      {/* Top Header - Soft Pastel Embroidery Atmosphere with Theme & 1-Click Shop (Hidden in Fullscreen for 100% canvas) */}
+      {!isFullScreen ? (
+        <View style={[styles.header, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+          <View style={styles.headerRow}>
             <TouchableOpacity 
-              style={[styles.headerThemeBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder, flexDirection: 'row', alignItems: 'center', gap: 4 }]} 
-              onPress={toggleTheme}
+              onPress={() => navigation.goBack()} 
+              style={[styles.backBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]} 
               activeOpacity={0.8}
-              accessibilityLabel="Zmień motyw"
+              accessibilityLabel="Powrót"
             >
-              <FlowerIcon size={14} color={theme.primary} />
-              {isTabletOrLarger && (
-                <Text style={[styles.headerThemeBtnText, { color: theme.textPrimary }]}>
-                  {themeMode === 'cozy' ? 'Pastel' : themeMode === 'oled' ? 'OLED' : 'Ochrona'}
-                </Text>
-              )}
+              <Text style={[styles.backBtnText, { color: theme.textPrimary }]}>
+                {isTabletOrLarger ? '← Wróć' : '←'}
+              </Text>
             </TouchableOpacity>
 
-            {/* 1-Click Shopping / Stash comparator */}
-            <TouchableOpacity 
-              style={[styles.headerShopBtn, { backgroundColor: theme.sage, flexDirection: 'row', alignItems: 'center', gap: 4 }]} 
-              onPress={() => setShowShopModal(true)} 
-              activeOpacity={0.85}
-              accessibilityLabel="Kup nici"
-            >
-              <CraftShopIcon size={15} color="#FFFFFF" />
-              {isTabletOrLarger && (
-                <Text style={styles.headerShopBtnText}>Kup nici</Text>
-              )}
-            </TouchableOpacity>
+            <View style={styles.titleContainer}>
+              <Text style={[styles.headerTitle, { color: theme.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">
+                {pattern.name}
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
+                {width}×{height} ({pattern.dimensions.width_cm}×{pattern.dimensions.height_cm} cm) • {color_palette.length} kol.
+              </Text>
+            </View>
 
-            <TouchableOpacity 
-              style={[styles.pdfBtn, { backgroundColor: theme.primary, flexDirection: 'row', alignItems: 'center', gap: 4 }]} 
-              onPress={handleExportPdf} 
-              activeOpacity={0.85}
-              accessibilityLabel="Pobierz PDF"
-            >
-              <PdfStitchIcon size={15} color="#FFFFFF" />
-              {isTabletOrLarger && (
-                <Text style={styles.pdfBtnText}>PDF</Text>
-              )}
-            </TouchableOpacity>
+            <View style={styles.headerActionsGroup}>
+              {/* Theme switcher (Cozy / OLED Dark / Eye Guard) */}
+              <TouchableOpacity 
+                style={[styles.headerThemeBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder, flexDirection: 'row', alignItems: 'center', gap: 4 }]} 
+                onPress={toggleTheme}
+                activeOpacity={0.8}
+                accessibilityLabel="Zmień motyw"
+              >
+                <FlowerIcon size={14} color={theme.primary} />
+                {isTabletOrLarger && (
+                  <Text style={[styles.headerThemeBtnText, { color: theme.textPrimary }]}>
+                    {themeMode === 'cozy' ? 'Pastel' : themeMode === 'oled' ? 'OLED' : 'Ochrona'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              {/* 1-Click Shopping / Stash comparator */}
+              <TouchableOpacity 
+                style={[styles.headerShopBtn, { backgroundColor: theme.sage, flexDirection: 'row', alignItems: 'center', gap: 4 }]} 
+                onPress={() => setShowShopModal(true)} 
+                activeOpacity={0.85}
+                accessibilityLabel="Kup nici"
+              >
+                <CraftShopIcon size={15} color="#FFFFFF" />
+                {isTabletOrLarger && (
+                  <Text style={styles.headerShopBtnText}>Kup nici</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.pdfBtn, { backgroundColor: theme.primary, flexDirection: 'row', alignItems: 'center', gap: 4 }]} 
+                onPress={handleExportPdf} 
+                activeOpacity={0.85}
+                accessibilityLabel="Pobierz PDF"
+              >
+                <PdfStitchIcon size={15} color="#FFFFFF" />
+                {isTabletOrLarger && (
+                  <Text style={styles.pdfBtnText}>PDF</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Cross-Stitch Progress Tracker */}
+          <View style={styles.progressContainer}>
+            <View style={styles.progressRow}>
+              <Text style={[styles.progressLabel, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
+                Ukończono: <Text style={[styles.progressBold, { color: theme.primaryDark }]}>{totalCompleted}/{totalStitches}</Text> ({overallPercent}%)
+              </Text>
+              <Text style={[styles.progressLabel, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
+                {selectedThread.thread_brand} {selectedThread.thread_code}: <Text style={[styles.progressBold, { color: theme.primaryDark }]}>{colorStitchesCompleted}/{colorStitchesTotal}</Text> ({colorPercent}%)
+              </Text>
+            </View>
+            <View style={[styles.progressBarTrack, { backgroundColor: theme.backgroundAlt }]}>
+              <View style={[styles.progressBarFill, { width: `${overallPercent}%`, backgroundColor: theme.sage }]} />
+            </View>
           </View>
         </View>
-
-        {/* Cross-Stitch Progress Tracker */}
-        <View style={styles.progressContainer}>
-          <View style={styles.progressRow}>
-            <Text style={[styles.progressLabel, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
-              Ukończono: <Text style={[styles.progressBold, { color: theme.primaryDark }]}>{totalCompleted}/{totalStitches}</Text> ({overallPercent}%)
+      ) : (
+        /* Floating mini banner when in full screen */
+        <View style={styles.floatingFullscreenHeader}>
+          <TouchableOpacity
+            style={styles.floatingExitFullscreenBtn}
+            onPress={() => setIsFullScreen(false)}
+            activeOpacity={0.85}
+            accessibilityLabel="Wyjdź z pełnego ekranu"
+          >
+            <Text style={styles.floatingExitFullscreenText}>✕ Wyjdź z pełnego ekranu</Text>
+          </TouchableOpacity>
+          <View style={styles.floatingFullscreenStats}>
+            <Text style={styles.floatingFullscreenStatsText}>
+              {pattern.name} • {overallPercent}%
             </Text>
-            <Text style={[styles.progressLabel, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
-              {selectedThread.thread_brand} {selectedThread.thread_code}: <Text style={[styles.progressBold, { color: theme.primaryDark }]}>{colorStitchesCompleted}/{colorStitchesTotal}</Text> ({colorPercent}%)
-            </Text>
-          </View>
-          <View style={[styles.progressBarTrack, { backgroundColor: theme.backgroundAlt }]}>
-            <View style={[styles.progressBarFill, { width: `${overallPercent}%`, backgroundColor: theme.sage }]} />
           </View>
         </View>
-      </View>
+      )}
 
       {/* Floating Gesture Toast */}
       {gestureToast && (
@@ -904,13 +933,65 @@ export default function PatternEditorScreen() {
 
           <View style={styles.toolSeparator} />
 
+          {/* Panel & Viewport Layout Controls */}
+          <View style={styles.toolGroup}>
+            <TouchableOpacity
+              style={[styles.smallModeBtn, showThreadPanel && styles.smallModeBtnActive]}
+              onPress={() => setShowThreadPanel(!showThreadPanel)}
+              accessibilityLabel="Pokaż lub ukryj panel z nićmi"
+            >
+              <FlossSkeinIcon size={13} color={showThreadPanel ? colors.textInverted : colors.textSecondary} />
+              <Text style={[styles.modeText, showThreadPanel && styles.modeTextActive]}>
+                {showThreadPanel ? 'Ukryj nici' : 'Pokaż nici'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.smallModeBtn}
+              onPress={() => viewportRef.current?.zoomFit()}
+              accessibilityLabel="Dopasuj wzór do okna"
+            >
+              <FrameBoxIcon size={13} color={colors.textSecondary} />
+              <Text style={styles.modeText}>Dopasuj</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.smallModeBtn, { backgroundColor: '#EAF7EE', borderColor: colors.sageBorder }]}
+              onPress={() => viewportRef.current?.zoomFill()}
+              accessibilityLabel="Wypełnij całość obszaru"
+            >
+              <FrameBoxIcon size={13} color={colors.sageDark} />
+              <Text style={[styles.modeText, { color: colors.sageDark, fontWeight: '700' }]}>Wypełnij</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.smallModeBtn, isFullScreen && styles.smallModeBtnActive]}
+              onPress={() => setIsFullScreen(!isFullScreen)}
+              accessibilityLabel="Tryb pełnoekranowy"
+            >
+              <FrameBoxIcon size={13} color={isFullScreen ? colors.textInverted : colors.textSecondary} />
+              <Text style={[styles.modeText, isFullScreen && styles.modeTextActive]}>
+                {isFullScreen ? 'Okno' : 'Pełny ekran'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.toolSeparator} />
+
           {/* Zoom & History Controls */}
           <View style={styles.toolGroup}>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => setCellSize(Math.max(12, cellSize - 3))} accessibilityLabel="Pomniejsz">
+            <TouchableOpacity 
+              style={styles.iconBtn} 
+              onPress={() => viewportRef.current?.zoomOut()} 
+              accessibilityLabel="Pomniejsz"
+            >
               <ZoomMagnifierIcon size={15} type="out" color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.zoomLabel}>{cellSize}px</Text>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => setCellSize(Math.min(38, cellSize + 3))} accessibilityLabel="Powiększ">
+            <TouchableOpacity 
+              style={styles.iconBtn} 
+              onPress={() => viewportRef.current?.zoomIn()} 
+              accessibilityLabel="Powiększ"
+            >
               <ZoomMagnifierIcon size={15} type="in" color={colors.textPrimary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconBtn} onPress={handleUndo} disabled={historyStep <= 0} accessibilityLabel="Cofnij">
@@ -928,161 +1009,240 @@ export default function PatternEditorScreen() {
 
       {/* Main Workspace Area: Split for Tablet / iPad or Stacked for Mobile */}
       {isTabletOrLarger ? (
-        /* Tablet / iPad Side-by-Side Workspace */
+        /* Tablet / iPad Side-by-Side Workspace with Collapsible Left Threads Panel */
         <View style={styles.tabletWorkspaceRow}>
-          {/* Left / Center: Huge Canvas Area */}
+          {/* Left Sidebar: Floss Palette & Thread Focus (Collapsible) */}
+          {showThreadPanel && (
+            <View style={[styles.tabletSidebar, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+              {/* Header inside left sidebar with collapse button */}
+              <View style={styles.sidebarTopHeader}>
+                <View style={styles.sidebarTopTitleRow}>
+                  <FlossSkeinIcon size={16} color={colors.primary} />
+                  <Text style={[styles.sidebarTopTitle, { color: theme.textPrimary }]}>
+                    Nici DMC ({color_palette.length})
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.sidebarCollapseBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}
+                  onPress={() => setShowThreadPanel(false)}
+                  accessibilityLabel="Schowaj panel z nićmi"
+                >
+                  <Text style={[styles.sidebarCollapseBtnText, { color: theme.textPrimary }]}>◂ Ukryj panel</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Active Thread Card */}
+              <View style={styles.sidebarActiveCard}>
+                <View style={styles.sidebarActiveHeader}>
+                  <View 
+                    style={[
+                      styles.sidebarLargeSwatch, 
+                      { backgroundColor: `rgb(${selectedThread.rgb[0]}, ${selectedThread.rgb[1]}, ${selectedThread.rgb[2]})` }
+                    ]}
+                  >
+                    <Text style={styles.sidebarLargeSymbol}>{selectedThread.symbol}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.sidebarActiveCode}>
+                      {selectedThread.thread_brand} {selectedThread.thread_code}
+                    </Text>
+                    <Text style={styles.sidebarActiveName} numberOfLines={1}>
+                      {selectedThread.thread_name || 'Kolor podstawowy'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.sidebarProgressRow}>
+                  <Text style={styles.sidebarProgressText}>
+                    Wyhaftowano: <Text style={{ fontWeight: '700', color: colors.primaryDark }}>{colorStitchesCompleted}/{colorStitchesTotal}</Text> ({colorPercent}%)
+                  </Text>
+                </View>
+                <View style={styles.progressBarTrack}>
+                  <View style={[styles.progressBarFill, { width: `${colorPercent}%`, backgroundColor: colors.primary }]} />
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.sidebarHighlightBtn,
+                    highlightColorIndex === selectedColorIndex && styles.sidebarHighlightBtnActive,
+                  ]}
+                  onPress={() => setHighlightColorIndex(highlightColorIndex === selectedColorIndex ? null : selectedColorIndex)}
+                >
+                  <Text style={[styles.sidebarHighlightBtnText, highlightColorIndex === selectedColorIndex && styles.sidebarHighlightBtnTextActive]}>
+                    {highlightColorIndex === selectedColorIndex ? 'Pokaż wszystkie kolory' : 'Skup się na tym kolorze (izoluj)'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* List of All Threads in Pattern */}
+              <View style={styles.sidebarListHeader}>
+                <Text style={styles.sidebarListTitle}>Paleta wzoru ({color_palette.length} nici):</Text>
+                <TouchableOpacity onPress={() => setShowLegendModal(true)}>
+                  <Text style={styles.sidebarListLink}>Zakupy</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.sidebarListScroll} showsVerticalScrollIndicator={true}>
+                {color_palette.map((thread, idx) => {
+                  const isSelected = selectedColorIndex === idx;
+                  const isHighlighted = highlightColorIndex === idx;
+                  const bg = `rgb(${thread.rgb[0]}, ${thread.rgb[1]}, ${thread.rgb[2]})`;
+
+                  return (
+                    <TouchableOpacity
+                      key={`side-floss-${idx}`}
+                      style={[
+                        styles.sidebarFlossItem,
+                        isSelected && styles.sidebarFlossItemSelected,
+                        isHighlighted && styles.sidebarFlossItemHighlighted,
+                      ]}
+                      onPress={() => {
+                        setSelectedColorIndex(idx);
+                        if (highlightColorIndex !== null) {
+                          setHighlightColorIndex(idx);
+                        }
+                      }}
+                    >
+                      <View style={[styles.sidebarSwatch, { backgroundColor: bg }]}>
+                        <Text style={styles.sidebarItemSymbol}>{thread.symbol}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.sidebarItemCode}>
+                          {thread.thread_brand} {thread.thread_code}
+                        </Text>
+                        <Text style={styles.sidebarItemCount}>
+                          {thread.stitch_count || 0} ściegów
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <View style={styles.activeDot} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Right / Center: Canvas Area fills remaining / 100% space! */}
           <View style={styles.tabletCanvasArea}>
             {renderCanvasGrid()}
-          </View>
 
-          {/* Right Sidebar: Floss Palette & Thread Focus */}
-          <View style={styles.tabletSidebar}>
-            {/* Active Thread Card */}
-            <View style={styles.sidebarActiveCard}>
-              <View style={styles.sidebarActiveHeader}>
-                <View 
-                  style={[
-                    styles.sidebarLargeSwatch, 
-                    { backgroundColor: `rgb(${selectedThread.rgb[0]}, ${selectedThread.rgb[1]}, ${selectedThread.rgb[2]})` }
-                  ]}
-                >
-                  <Text style={styles.sidebarLargeSymbol}>{selectedThread.symbol}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.sidebarActiveCode}>
-                    {selectedThread.thread_brand} {selectedThread.thread_code}
-                  </Text>
-                  <Text style={styles.sidebarActiveName} numberOfLines={1}>
-                    {selectedThread.thread_name || 'Kolor podstawowy'}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.sidebarProgressRow}>
-                <Text style={styles.sidebarProgressText}>
-                  Wyhaftowano: <Text style={{ fontWeight: '700', color: colors.primaryDark }}>{colorStitchesCompleted}/{colorStitchesTotal}</Text> ({colorPercent}%)
-                </Text>
-              </View>
-              <View style={styles.progressBarTrack}>
-                <View style={[styles.progressBarFill, { width: `${colorPercent}%`, backgroundColor: colors.primary }]} />
-              </View>
-
+            {/* Floating button on the left edge to restore left panel when hidden */}
+            {!showThreadPanel && (
               <TouchableOpacity
-                style={[
-                  styles.sidebarHighlightBtn,
-                  highlightColorIndex === selectedColorIndex && styles.sidebarHighlightBtnActive,
-                ]}
-                onPress={() => setHighlightColorIndex(highlightColorIndex === selectedColorIndex ? null : selectedColorIndex)}
+                style={[styles.floatingRestoreSidebarBtn, { backgroundColor: theme.primary }]}
+                onPress={() => setShowThreadPanel(true)}
+                activeOpacity={0.88}
+                accessibilityLabel="Pokaż panel nici"
               >
-                <Text style={[styles.sidebarHighlightBtnText, highlightColorIndex === selectedColorIndex && styles.sidebarHighlightBtnTextActive]}>
-                  {highlightColorIndex === selectedColorIndex ? 'Pokaż wszystkie kolory' : 'Skup się na tym kolorze (izoluj)'}
-                </Text>
+                <FlossSkeinIcon size={15} color="#FFFFFF" />
+                <Text style={styles.floatingRestoreSidebarText}>Pokaż nici ({color_palette.length})</Text>
+                <Text style={styles.floatingRestoreChevron}>▸</Text>
               </TouchableOpacity>
-            </View>
+            )}
 
-            {/* List of All Threads in Pattern */}
-            <View style={styles.sidebarListHeader}>
-              <Text style={styles.sidebarListTitle}>Paleta wzoru ({color_palette.length} nici):</Text>
-              <TouchableOpacity onPress={() => setShowLegendModal(true)}>
-                <Text style={styles.sidebarListLink}>Zakupy</Text>
+            {/* Active Thread Mini Pill when left panel is hidden */}
+            {!showThreadPanel && (
+              <TouchableOpacity
+                style={[styles.floatingActiveThreadPill, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}
+                onPress={() => setShowThreadPanel(true)}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.floatingThreadSwatch, { backgroundColor: `rgb(${selectedThread.rgb[0]}, ${selectedThread.rgb[1]}, ${selectedThread.rgb[2]})` }]}>
+                  <Text style={styles.floatingThreadSymbol}>{selectedThread.symbol}</Text>
+                </View>
+                <View style={{ marginRight: 6 }}>
+                  <Text style={[styles.floatingThreadCode, { color: theme.textPrimary }]}>{selectedThread.thread_brand} {selectedThread.thread_code}</Text>
+                  <Text style={[styles.floatingThreadStats, { color: theme.textSecondary }]}>{colorStitchesCompleted}/{colorStitchesTotal} krz.</Text>
+                </View>
               </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.sidebarListScroll} showsVerticalScrollIndicator={true}>
-              {color_palette.map((thread, idx) => {
-                const isSelected = selectedColorIndex === idx;
-                const isHighlighted = highlightColorIndex === idx;
-                const bg = `rgb(${thread.rgb[0]}, ${thread.rgb[1]}, ${thread.rgb[2]})`;
-
-                return (
-                  <TouchableOpacity
-                    key={`side-floss-${idx}`}
-                    style={[
-                      styles.sidebarFlossItem,
-                      isSelected && styles.sidebarFlossItemSelected,
-                      isHighlighted && styles.sidebarFlossItemHighlighted,
-                    ]}
-                    onPress={() => {
-                      setSelectedColorIndex(idx);
-                      if (highlightColorIndex !== null) {
-                        setHighlightColorIndex(idx);
-                      }
-                    }}
-                  >
-                    <View style={[styles.sidebarSwatch, { backgroundColor: bg }]}>
-                      <Text style={styles.sidebarItemSymbol}>{thread.symbol}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.sidebarItemCode}>
-                        {thread.thread_brand} {thread.thread_code}
-                      </Text>
-                      <Text style={styles.sidebarItemCount}>
-                        {thread.stitch_count || 0} ściegów
-                      </Text>
-                    </View>
-                    {isSelected && (
-                      <View style={styles.activeDot} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            )}
           </View>
         </View>
       ) : (
-        /* Mobile Stacked Workspace */
+        /* Mobile Stacked Workspace with Collapsible Bottom Palette */
         <View style={styles.mobileWorkspace}>
           <View style={styles.mobileCanvasContainer}>
             {renderCanvasGrid()}
-          </View>
 
-          {/* Bottom Floss Palette Bar */}
-          <View style={[styles.paletteBar, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
-            <View style={styles.paletteHeaderRow}>
-              <Text style={styles.paletteTitle}>
-                Nici ({color_palette.length} kolorów DMC):
-              </Text>
+            {/* Floating button to restore bottom palette when hidden on mobile */}
+            {!showThreadPanel && (
               <TouchableOpacity
-                style={styles.legendToggleBtn}
-                onPress={() => setShowLegendModal(!showLegendModal)}
+                style={[styles.mobileFloatingRestoreBtn, { backgroundColor: theme.primary }]}
+                onPress={() => setShowThreadPanel(true)}
+                activeOpacity={0.88}
+                accessibilityLabel="Pokaż nici"
               >
-                <Text style={styles.legendToggleText}>
-                  {showLegendModal ? 'Ukryj listę' : 'Pełna lista & metry'}
-                </Text>
+                <FlossSkeinIcon size={14} color="#FFFFFF" />
+                <Text style={styles.mobileFloatingRestoreText}>Nici ({color_palette.length})</Text>
               </TouchableOpacity>
-            </View>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.paletteScroll}>
-              {color_palette.map((thread, idx) => {
-                const isSelected = selectedColorIndex === idx;
-                const isHighlighted = highlightColorIndex === idx;
-                const bg = `rgb(${thread.rgb[0]}, ${thread.rgb[1]}, ${thread.rgb[2]})`;
-
-                return (
-                  <TouchableOpacity
-                    key={`pal-${idx}`}
-                    style={[
-                      styles.flossChip,
-                      isSelected && styles.flossChipSelected,
-                      isHighlighted && styles.flossChipHighlighted,
-                    ]}
-                    onPress={() => {
-                      setSelectedColorIndex(idx);
-                      setHighlightColorIndex(highlightColorIndex === idx ? null : idx);
-                    }}
-                  >
-                    <View style={[styles.flossSwatch, { backgroundColor: bg }]}>
-                      <Text style={styles.flossSymbol}>{thread.symbol}</Text>
-                    </View>
-                    <View style={styles.flossDetails}>
-                      <Text style={styles.flossCode}>{thread.thread_brand} {thread.thread_code}</Text>
-                      <Text style={styles.flossCount}>{thread.stitch_count || 0} ściegów</Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            )}
           </View>
+
+          {/* Bottom Floss Palette Bar (Collapsible) */}
+          {showThreadPanel && (
+            <View style={[styles.paletteBar, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+              <View style={styles.paletteHeaderRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <FlossSkeinIcon size={14} color={colors.primary} />
+                  <Text style={styles.paletteTitle}>
+                    Nici ({color_palette.length} kolorów DMC):
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity
+                    style={styles.legendToggleBtn}
+                    onPress={() => setShowLegendModal(!showLegendModal)}
+                  >
+                    <Text style={styles.legendToggleText}>
+                      {showLegendModal ? 'Ukryj listę' : 'Pełna lista & metry'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.legendToggleBtn, { backgroundColor: theme.backgroundAlt }]}
+                    onPress={() => setShowThreadPanel(false)}
+                    accessibilityLabel="Schowaj pasek nici"
+                  >
+                    <Text style={[styles.legendToggleText, { color: theme.textSecondary }]}>
+                      ▾ Schowaj
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.paletteScroll}>
+                {color_palette.map((thread, idx) => {
+                  const isSelected = selectedColorIndex === idx;
+                  const isHighlighted = highlightColorIndex === idx;
+                  const bg = `rgb(${thread.rgb[0]}, ${thread.rgb[1]}, ${thread.rgb[2]})`;
+
+                  return (
+                    <TouchableOpacity
+                      key={`pal-${idx}`}
+                      style={[
+                        styles.flossChip,
+                        isSelected && styles.flossChipSelected,
+                        isHighlighted && styles.flossChipHighlighted,
+                      ]}
+                      onPress={() => {
+                        setSelectedColorIndex(idx);
+                        setHighlightColorIndex(highlightColorIndex === idx ? null : idx);
+                      }}
+                    >
+                      <View style={[styles.flossSwatch, { backgroundColor: bg }]}>
+                        <Text style={styles.flossSymbol}>{thread.symbol}</Text>
+                      </View>
+                      <View style={styles.flossDetails}>
+                        <Text style={styles.flossCode}>{thread.thread_brand} {thread.thread_code}</Text>
+                        <Text style={styles.flossCount}>{thread.stitch_count || 0} ściegów</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
         </View>
       )}
 
@@ -1464,17 +1624,172 @@ const styles = StyleSheet.create({
   tabletWorkspaceRow: {
     flex: 1,
     flexDirection: 'row',
+    position: 'relative',
+    overflow: 'hidden',
   },
   tabletCanvasArea: {
     flex: 1,
     backgroundColor: colors.backgroundAlt,
+    position: 'relative',
+    overflow: 'hidden',
   },
   tabletSidebar: {
-    width: 320,
+    width: 310,
     backgroundColor: colors.surface,
-    borderLeftWidth: 1,
+    borderRightWidth: 1,
     borderColor: colors.surfaceBorder,
-    padding: 14,
+    padding: 12,
+  },
+  sidebarTopHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderColor: colors.surfaceBorder,
+  },
+  sidebarTopTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  sidebarTopTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  sidebarCollapseBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    backgroundColor: colors.backgroundAlt,
+  },
+  sidebarCollapseBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  floatingRestoreSidebarBtn: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    zIndex: 20,
+    ...shadows.glowPrimary,
+  },
+  floatingRestoreSidebarText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  floatingRestoreChevron: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  floatingActiveThreadPill: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 5,
+    paddingRight: 10,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    zIndex: 20,
+    ...shadows.card,
+  },
+  floatingThreadSwatch: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.15)',
+  },
+  floatingThreadSymbol: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
+  },
+  floatingThreadCode: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  floatingThreadStats: {
+    fontSize: 9.5,
+    color: colors.textSecondary,
+  },
+  mobileFloatingRestoreBtn: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    zIndex: 20,
+    ...shadows.glowPrimary,
+  },
+  mobileFloatingRestoreText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  floatingFullscreenHeader: {
+    position: 'absolute',
+    top: 10,
+    left: 12,
+    right: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 50,
+  },
+  floatingExitFullscreenBtn: {
+    backgroundColor: 'rgba(55, 65, 81, 0.88)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    ...shadows.card,
+  },
+  floatingExitFullscreenText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  floatingFullscreenStats: {
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    ...shadows.card,
+  },
+  floatingFullscreenStatsText: {
+    color: colors.textPrimary,
+    fontSize: 11.5,
+    fontWeight: '700',
   },
   sidebarActiveCard: {
     backgroundColor: colors.background,

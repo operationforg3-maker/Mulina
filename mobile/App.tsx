@@ -139,7 +139,7 @@ function MainNavigator() {
         <Stack.Screen
           name="PatternEditor"
           component={PatternEditorScreen}
-          options={{ title: 'Tamborek & Edytor', headerShown: true }}
+          options={{ title: 'Tamborek & Edytor', headerShown: false }}
         />
         <Stack.Screen
           name="Profile"

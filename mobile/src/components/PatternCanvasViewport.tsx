@@ -104,23 +104,25 @@ export default function PatternCanvasViewport({
   useEffect(() => {
     if (!initialFitDoneRef.current && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      const availW = rect.width || winW;
-      const availH = rect.height || (winH - 260);
+      const availW = rect.width > 0 ? rect.width : winW;
+      const availH = rect.height > 0 ? rect.height : (winH - 260);
 
       const gridPixelW = gridW * BASE_CELL;
       const gridPixelH = gridH * BASE_CELL;
 
-      const fitScale = Math.min((availW - 80) / gridPixelW, (availH - 80) / gridPixelH, 1.2);
+      const fitScale = Math.min((availW - 40) / gridPixelW, (availH - 40) / gridPixelH, 1.2);
       const initialScale = Math.max(0.15, fitScale);
 
-      const initialPanX = Math.max(20, (availW - gridPixelW * initialScale) / 2);
-      const initialPanY = Math.max(20, (availH - gridPixelH * initialScale) / 2);
+      const initialPanX = Math.max(10, (availW - gridPixelW * initialScale) / 2);
+      const initialPanY = Math.max(10, (availH - gridPixelH * initialScale) / 2);
 
       setScale(initialScale);
       setPanX(initialPanX);
       setPanY(initialPanY);
       transformRef.current = { scale: initialScale, panX: initialPanX, panY: initialPanY };
-      initialFitDoneRef.current = true;
+      if (rect.width > 50 && rect.height > 50) {
+        initialFitDoneRef.current = true;
+      }
     }
   }, [gridW, gridH, winW, winH]);
 
@@ -432,19 +434,49 @@ export default function PatternCanvasViewport({
       if (!canvas || !container) return;
 
       const rect = container.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
+      const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+      const w = rect.width > 0 ? rect.width : (winW || 360);
+      const h = rect.height > 0 ? rect.height : (winH - 260 || 360);
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+
+      // If initial fit was triggered when rect had 0 dimensions, do the fit now
+      if (!initialFitDoneRef.current && rect.width > 50 && rect.height > 50) {
+        const gridPixelW = gridW * BASE_CELL;
+        const gridPixelH = gridH * BASE_CELL;
+        const fitScale = Math.min((rect.width - 40) / gridPixelW, (rect.height - 40) / gridPixelH, 1.2);
+        const initialScale = Math.max(0.15, fitScale);
+        const initialPanX = Math.max(10, (rect.width - gridPixelW * initialScale) / 2);
+        const initialPanY = Math.max(10, (rect.height - gridPixelH * initialScale) / 2);
+
+        setScale(initialScale);
+        setPanX(initialPanX);
+        setPanY(initialPanY);
+        transformRef.current = { scale: initialScale, panX: initialPanX, panY: initialPanY };
+        initialFitDoneRef.current = true;
+      }
 
       renderCanvas();
     };
 
     handleResize();
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [renderCanvas]);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      ro = new ResizeObserver(() => {
+        handleResize();
+      });
+      ro.observe(containerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (ro) ro.disconnect();
+    };
+  }, [renderCanvas, gridW, gridH, winW, winH]);
 
   // Re-render when dependencies or transform change
   useEffect(() => {

@@ -659,49 +659,72 @@ export default function PatternEditorScreen() {
       {/* Top Header - Soft Pastel Embroidery Atmosphere with Theme & 1-Click Shop */}
       <View style={[styles.header, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]} activeOpacity={0.8}>
-            <Text style={[styles.backBtnText, { color: theme.textPrimary }]}>← Wróć</Text>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()} 
+            style={[styles.backBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]} 
+            activeOpacity={0.8}
+            accessibilityLabel="Powrót"
+          >
+            <Text style={[styles.backBtnText, { color: theme.textPrimary }]}>
+              {isTabletOrLarger ? '← Wróć' : '←'}
+            </Text>
           </TouchableOpacity>
+
           <View style={styles.titleContainer}>
-            <Text style={[styles.headerTitle, { color: theme.textPrimary }]} numberOfLines={1}>{pattern.name}</Text>
-            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-              {width}×{height} ściegów ({pattern.dimensions.width_cm}×{pattern.dimensions.height_cm} cm) • {color_palette.length} kolorów DMC
+            <Text style={[styles.headerTitle, { color: theme.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">
+              {pattern.name}
+            </Text>
+            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
+              {width}×{height} ({pattern.dimensions.width_cm}×{pattern.dimensions.height_cm} cm) • {color_palette.length} kol.
             </Text>
           </View>
 
-          {/* Theme switcher (Cozy / OLED Dark / Eye Guard) */}
-          <TouchableOpacity 
-            style={[styles.headerThemeBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]} 
-            onPress={toggleTheme}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.headerThemeBtnText, { color: theme.textPrimary }]}>
-              {themeMode === 'cozy' ? '🌸 Pastel' : themeMode === 'oled' ? '🌙 OLED' : '🔴 Ochrona'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.headerActionsGroup}>
+            {/* Theme switcher (Cozy / OLED Dark / Eye Guard) */}
+            <TouchableOpacity 
+              style={[styles.headerThemeBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]} 
+              onPress={toggleTheme}
+              activeOpacity={0.8}
+              accessibilityLabel="Zmień motyw"
+            >
+              <Text style={[styles.headerThemeBtnText, { color: theme.textPrimary }]}>
+                {themeMode === 'cozy' ? (isTabletOrLarger ? '🌸 Pastel' : '🌸') : themeMode === 'oled' ? (isTabletOrLarger ? '🌙 OLED' : '🌙') : (isTabletOrLarger ? '🔴 Ochrona' : '🔴')}
+              </Text>
+            </TouchableOpacity>
 
-          {/* 1-Click Shopping / Stash comparator */}
-          <TouchableOpacity 
-            style={[styles.headerShopBtn, { backgroundColor: theme.sage }]} 
-            onPress={() => setShowShopModal(true)} 
-            activeOpacity={0.85}
-          >
-            <Text style={styles.headerShopBtnText}>🛍️ Kup nici</Text>
-          </TouchableOpacity>
+            {/* 1-Click Shopping / Stash comparator */}
+            <TouchableOpacity 
+              style={[styles.headerShopBtn, { backgroundColor: theme.sage }]} 
+              onPress={() => setShowShopModal(true)} 
+              activeOpacity={0.85}
+              accessibilityLabel="Kup nici"
+            >
+              <Text style={styles.headerShopBtnText}>
+                {isTabletOrLarger ? '🛍️ Kup nici' : '🛍️'}
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.pdfBtn, { backgroundColor: theme.primary }]} onPress={handleExportPdf} activeOpacity={0.85}>
-            <Text style={styles.pdfBtnText}>📄 PDF</Text>
-          </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.pdfBtn, { backgroundColor: theme.primary }]} 
+              onPress={handleExportPdf} 
+              activeOpacity={0.85}
+              accessibilityLabel="Pobierz PDF"
+            >
+              <Text style={styles.pdfBtnText}>
+                {isTabletOrLarger ? '📄 PDF' : '📄'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Cross-Stitch Progress Tracker */}
         <View style={styles.progressContainer}>
           <View style={styles.progressRow}>
-            <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
+            <Text style={[styles.progressLabel, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
               Ukończono: <Text style={[styles.progressBold, { color: theme.primaryDark }]}>{totalCompleted}/{totalStitches}</Text> ({overallPercent}%)
             </Text>
-            <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
-              Kolor {selectedThread.thread_brand} {selectedThread.thread_code}: <Text style={[styles.progressBold, { color: theme.primaryDark }]}>{colorStitchesCompleted}/{colorStitchesTotal}</Text> ({colorPercent}%)
+            <Text style={[styles.progressLabel, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
+              {selectedThread.thread_brand} {selectedThread.thread_code}: <Text style={[styles.progressBold, { color: theme.primaryDark }]}>{colorStitchesCompleted}/{colorStitchesTotal}</Text> ({colorPercent}%)
             </Text>
           </View>
           <View style={[styles.progressBarTrack, { backgroundColor: theme.backgroundAlt }]}>
@@ -717,156 +740,162 @@ export default function PatternEditorScreen() {
         </View>
       )}
 
-      {/* Cross-Stitch Tools Bar */}
-      <View style={[styles.toolbar, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
-        <View style={styles.toolGroup}>
-          <TouchableOpacity
-            style={[styles.toolBtn, activeTool === 'stitch' && styles.toolBtnActive]}
-            onPress={() => setActiveTool('stitch')}
-          >
-            <Text style={styles.toolIcon}>🪡</Text>
-            <Text style={[styles.toolText, activeTool === 'stitch' && styles.toolTextActive]}>Haftuj</Text>
-          </TouchableOpacity>
-
-          {/* Box Area Selection (1-finger long press or tool click) */}
-          <TouchableOpacity
-            style={[styles.toolBtn, activeTool === 'box_select' && styles.toolBtnActive]}
-            onPress={() => {
-              setActiveTool('box_select');
-              setIsBoxSelecting(false);
-              setBoxStart(null);
-            }}
-          >
-            <Text style={styles.toolIcon}>🔲</Text>
-            <Text style={[styles.toolText, activeTool === 'box_select' && styles.toolTextActive]}>Ramka</Text>
-          </TouchableOpacity>
-
-          {/* Parking Mode */}
-          <TouchableOpacity
-            style={[styles.toolBtn, activeTool === 'parking' && styles.toolBtnActive]}
-            onPress={() => {
-              if (activeTool === 'parking') {
-                // Cycle corner
-                const corners: Array<'NW'|'NE'|'SW'|'SE'> = ['NE', 'SE', 'SW', 'NW'];
-                const nextIdx = (corners.indexOf(parkingCorner) + 1) % corners.length;
-                setParkingCorner(corners[nextIdx]);
-              } else {
-                setActiveTool('parking');
-              }
-            }}
-          >
-            <Text style={styles.toolIcon}>📍</Text>
-            <Text style={[styles.toolText, activeTool === 'parking' && styles.toolTextActive]}>
-              Parkuj ({parkingCorner})
-            </Text>
-          </TouchableOpacity>
-
-          {/* Drag / Scroll Lock Switcher */}
-          {activeTool === 'stitch' && (
+      {/* Cross-Stitch Tools Bar - Scrollable horizontally on mobile, clean dock */}
+      <View style={[styles.toolbarWrapper, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.toolbarScrollContent}
+        >
+          <View style={styles.toolGroup}>
             <TouchableOpacity
-              style={[styles.lockBtn, stitchLock ? styles.lockBtnActive : styles.lockBtnInactive]}
-              onPress={() => setStitchLock(!stitchLock)}
-              activeOpacity={0.85}
+              style={[styles.toolBtn, activeTool === 'stitch' && styles.toolBtnActive]}
+              onPress={() => setActiveTool('stitch')}
             >
-              <Text style={styles.lockIcon}>{stitchLock ? '🔒' : '🔓'}</Text>
-              <Text style={[styles.lockText, stitchLock && styles.lockTextActive]}>
-                {stitchLock ? 'Przeciąganie' : 'Przewijanie'}
+              <Text style={styles.toolIcon}>🪡</Text>
+              <Text style={[styles.toolText, activeTool === 'stitch' && styles.toolTextActive]}>Haftuj</Text>
+            </TouchableOpacity>
+
+            {/* Box Area Selection (1-finger long press or tool click) */}
+            <TouchableOpacity
+              style={[styles.toolBtn, activeTool === 'box_select' && styles.toolBtnActive]}
+              onPress={() => {
+                setActiveTool('box_select');
+                setIsBoxSelecting(false);
+                setBoxStart(null);
+              }}
+            >
+              <Text style={styles.toolIcon}>🔲</Text>
+              <Text style={[styles.toolText, activeTool === 'box_select' && styles.toolTextActive]}>Ramka</Text>
+            </TouchableOpacity>
+
+            {/* Parking Mode */}
+            <TouchableOpacity
+              style={[styles.toolBtn, activeTool === 'parking' && styles.toolBtnActive]}
+              onPress={() => {
+                if (activeTool === 'parking') {
+                  // Cycle corner
+                  const corners: Array<'NW'|'NE'|'SW'|'SE'> = ['NE', 'SE', 'SW', 'NW'];
+                  const nextIdx = (corners.indexOf(parkingCorner) + 1) % corners.length;
+                  setParkingCorner(corners[nextIdx]);
+                } else {
+                  setActiveTool('parking');
+                }
+              }}
+            >
+              <Text style={styles.toolIcon}>📍</Text>
+              <Text style={[styles.toolText, activeTool === 'parking' && styles.toolTextActive]}>
+                Parkuj ({parkingCorner})
               </Text>
             </TouchableOpacity>
-          )}
 
-          <TouchableOpacity
-            style={[styles.toolBtn, activeTool === 'picker' && styles.toolBtnActive]}
-            onPress={() => setActiveTool('picker')}
-          >
-            <Text style={styles.toolIcon}>🔍</Text>
-            <Text style={[styles.toolText, activeTool === 'picker' && styles.toolTextActive]}>Pipeta</Text>
-          </TouchableOpacity>
+            {/* Drag / Scroll Lock Switcher */}
+            {activeTool === 'stitch' && (
+              <TouchableOpacity
+                style={[styles.lockBtn, stitchLock ? styles.lockBtnActive : styles.lockBtnInactive]}
+                onPress={() => setStitchLock(!stitchLock)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.lockIcon}>{stitchLock ? '🔒' : '🔓'}</Text>
+                <Text style={[styles.lockText, stitchLock && styles.lockTextActive]}>
+                  {stitchLock ? 'Przeciągaj' : 'Przewijaj'}
+                </Text>
+              </TouchableOpacity>
+            )}
 
-          <TouchableOpacity
-            style={[styles.toolBtn, activeTool === 'pencil' && styles.toolBtnActive]}
-            onPress={() => setActiveTool('pencil')}
-          >
-            <Text style={styles.toolIcon}>✏️</Text>
-            <Text style={[styles.toolText, activeTool === 'pencil' && styles.toolTextActive]}>Rysuj</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.toolBtn, activeTool === 'eraser' && styles.toolBtnActive]}
-            onPress={() => setActiveTool('eraser')}
-          >
-            <Text style={styles.toolIcon}>🧹</Text>
-            <Text style={[styles.toolText, activeTool === 'eraser' && styles.toolTextActive]}>Gumka</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.toolBtn, activeTool === 'fill' && styles.toolBtnActive]}
-            onPress={() => setActiveTool('fill')}
-          >
-            <Text style={styles.toolIcon}>🪣</Text>
-            <Text style={[styles.toolText, activeTool === 'fill' && styles.toolTextActive]}>Wypełnij</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.toolSeparator} />
-
-        {/* View Mode Switcher */}
-        <View style={styles.toolGroup}>
-          <TouchableOpacity
-            style={[styles.smallModeBtn, viewMode === 'stitches' && styles.smallModeBtnActive]}
-            onPress={() => setViewMode('stitches')}
-          >
-            <Text style={[styles.modeText, viewMode === 'stitches' && styles.modeTextActive]}>✕ Krzyżyki</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.smallModeBtn, viewMode === 'symbols' && styles.smallModeBtnActive]}
-            onPress={() => setViewMode('symbols')}
-          >
-            <Text style={[styles.modeText, viewMode === 'symbols' && styles.modeTextActive]}>🔣 Symbole</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.smallModeBtn, viewMode === 'colors' && styles.smallModeBtnActive]}
-            onPress={() => setViewMode('colors')}
-          >
-            <Text style={[styles.modeText, viewMode === 'colors' && styles.modeTextActive]}>🎨 Kolory</Text>
-          </TouchableOpacity>
-
-          {/* Backstitch Toggle */}
-          {backstitchLines.length > 0 && (
             <TouchableOpacity
-              style={[styles.smallModeBtn, showBackstitch && styles.smallModeBtnActive]}
-              onPress={() => setShowBackstitch(!showBackstitch)}
+              style={[styles.toolBtn, activeTool === 'picker' && styles.toolBtnActive]}
+              onPress={() => setActiveTool('picker')}
             >
-              <Text style={[styles.modeText, showBackstitch && styles.modeTextActive]}>
-                🧵 Obrys ({backstitchLines.filter(b => b.completed).length}/{backstitchLines.length})
-              </Text>
+              <Text style={styles.toolIcon}>🔍</Text>
+              <Text style={[styles.toolText, activeTool === 'picker' && styles.toolTextActive]}>Pipeta</Text>
             </TouchableOpacity>
-          )}
-        </View>
 
-        <View style={styles.toolSeparator} />
+            <TouchableOpacity
+              style={[styles.toolBtn, activeTool === 'pencil' && styles.toolBtnActive]}
+              onPress={() => setActiveTool('pencil')}
+            >
+              <Text style={styles.toolIcon}>✏️</Text>
+              <Text style={[styles.toolText, activeTool === 'pencil' && styles.toolTextActive]}>Rysuj</Text>
+            </TouchableOpacity>
 
-        {/* Zoom & History Controls */}
-        <View style={styles.toolGroup}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => setCellSize(Math.max(12, cellSize - 3))}>
-            <Text style={styles.iconBtnText}>🔍−</Text>
-          </TouchableOpacity>
-          <Text style={styles.zoomLabel}>{cellSize}px</Text>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => setCellSize(Math.min(38, cellSize + 3))}>
-            <Text style={styles.iconBtnText}>🔍+</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={handleUndo} disabled={historyStep <= 0} accessibilityLabel="Cofnij (gest 2 palców)">
-            <Text style={[styles.iconBtnText, historyStep <= 0 && styles.disabledText]}>↶</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={handleRedo} disabled={historyStep >= history.length - 1} accessibilityLabel="Ponów (gest 3 palców)">
-            <Text style={[styles.iconBtnText, historyStep >= history.length - 1 && styles.disabledText]}>↷</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={handleRemoveConfetti} accessibilityLabel="Usuń confetti">
-            <Text style={styles.iconBtnText}>🪄</Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={[styles.toolBtn, activeTool === 'eraser' && styles.toolBtnActive]}
+              onPress={() => setActiveTool('eraser')}
+            >
+              <Text style={styles.toolIcon}>🧹</Text>
+              <Text style={[styles.toolText, activeTool === 'eraser' && styles.toolTextActive]}>Gumka</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.toolBtn, activeTool === 'fill' && styles.toolBtnActive]}
+              onPress={() => setActiveTool('fill')}
+            >
+              <Text style={styles.toolIcon}>🪣</Text>
+              <Text style={[styles.toolText, activeTool === 'fill' && styles.toolTextActive]}>Wypełnij</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.toolSeparator} />
+
+          {/* View Mode Switcher */}
+          <View style={styles.toolGroup}>
+            <TouchableOpacity
+              style={[styles.smallModeBtn, viewMode === 'stitches' && styles.smallModeBtnActive]}
+              onPress={() => setViewMode('stitches')}
+            >
+              <Text style={[styles.modeText, viewMode === 'stitches' && styles.modeTextActive]}>✕ Krzyżyki</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.smallModeBtn, viewMode === 'symbols' && styles.smallModeBtnActive]}
+              onPress={() => setViewMode('symbols')}
+            >
+              <Text style={[styles.modeText, viewMode === 'symbols' && styles.modeTextActive]}>🔣 Symbole</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.smallModeBtn, viewMode === 'colors' && styles.smallModeBtnActive]}
+              onPress={() => setViewMode('colors')}
+            >
+              <Text style={[styles.modeText, viewMode === 'colors' && styles.modeTextActive]}>🎨 Kolory</Text>
+            </TouchableOpacity>
+
+            {/* Backstitch Toggle */}
+            {backstitchLines.length > 0 && (
+              <TouchableOpacity
+                style={[styles.smallModeBtn, showBackstitch && styles.smallModeBtnActive]}
+                onPress={() => setShowBackstitch(!showBackstitch)}
+              >
+                <Text style={[styles.modeText, showBackstitch && styles.modeTextActive]}>
+                  🧵 Obrys ({backstitchLines.filter(b => b.completed).length}/{backstitchLines.length})
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.toolSeparator} />
+
+          {/* Zoom & History Controls */}
+          <View style={styles.toolGroup}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => setCellSize(Math.max(12, cellSize - 3))}>
+              <Text style={styles.iconBtnText}>🔍−</Text>
+            </TouchableOpacity>
+            <Text style={styles.zoomLabel}>{cellSize}px</Text>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => setCellSize(Math.min(38, cellSize + 3))}>
+              <Text style={styles.iconBtnText}>🔍+</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleUndo} disabled={historyStep <= 0} accessibilityLabel="Cofnij">
+              <Text style={[styles.iconBtnText, historyStep <= 0 && styles.disabledText]}>↶</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleRedo} disabled={historyStep >= history.length - 1} accessibilityLabel="Ponów">
+              <Text style={[styles.iconBtnText, historyStep >= history.length - 1 && styles.disabledText]}>↷</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleRemoveConfetti} accessibilityLabel="Usuń confetti">
+              <Text style={styles.iconBtnText}>🪄</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </View>
 
       {/* Main Workspace Area: Split for Tablet / iPad or Stacked for Mobile */}
@@ -974,11 +1003,13 @@ export default function PatternEditorScreen() {
         </View>
       ) : (
         /* Mobile Stacked Workspace */
-        <>
-          {renderCanvasGrid()}
+        <View style={styles.mobileWorkspace}>
+          <View style={styles.mobileCanvasContainer}>
+            {renderCanvasGrid()}
+          </View>
 
           {/* Bottom Floss Palette Bar */}
-          <View style={styles.paletteBar}>
+          <View style={[styles.paletteBar, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
             <View style={styles.paletteHeaderRow}>
               <Text style={styles.paletteTitle}>
                 🧵 Nici ({color_palette.length} kolorów DMC):
@@ -1024,7 +1055,7 @@ export default function PatternEditorScreen() {
               })}
             </ScrollView>
           </View>
-        </>
+        </View>
       )}
 
       {/* Full Thread Legend Modal Drawer */}
@@ -1167,25 +1198,29 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: colors.surface,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingHorizontal: 12,
+    paddingTop: Platform.OS === 'ios' ? 10 : 8,
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderColor: colors.surfaceBorder,
+    flexShrink: 0,
     ...shadows.card,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
+    gap: 8,
   },
   backBtn: {
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
     backgroundColor: colors.backgroundAlt,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backBtnText: {
     fontSize: 13,
@@ -1194,47 +1229,59 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     flex: 1,
+    minWidth: 0,
+    marginRight: 4,
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
     color: colors.textPrimary,
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textSecondary,
     marginTop: 1,
   },
+  headerActionsGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+  },
   pdfBtn: {
     backgroundColor: colors.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
     ...shadows.glowPrimary,
   },
   pdfBtnText: {
     color: colors.textInverted,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   progressContainer: {
-    marginTop: 10,
+    marginTop: 6,
   },
   progressRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 4,
+    gap: 8,
   },
   progressLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     color: colors.textSecondary,
+    flexShrink: 1,
   },
   progressBold: {
     fontWeight: '700',
     color: colors.primaryDark,
   },
   progressBarTrack: {
-    height: 6,
+    height: 5,
     backgroundColor: colors.backgroundAlt,
     borderRadius: 3,
     overflow: 'hidden',
@@ -1244,16 +1291,31 @@ const styles = StyleSheet.create({
     backgroundColor: colors.sage,
     borderRadius: 3,
   },
-  toolbar: {
+  toolbarWrapper: {
     backgroundColor: colors.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
     borderBottomWidth: 1,
     borderColor: colors.surfaceBorder,
-    flexWrap: 'wrap',
+    flexShrink: 0,
+  },
+  toolbarScrollContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     gap: 6,
+  },
+  mobileWorkspace: {
+    flex: 1,
+    width: '100%',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  mobileCanvasContainer: {
+    flex: 1,
+    width: '100%',
+    minHeight: 180,
+    position: 'relative',
+    overflow: 'hidden',
   },
   toolGroup: {
     flexDirection: 'row',
@@ -1600,8 +1662,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderColor: colors.surfaceBorder,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    flexShrink: 0,
   },
   paletteHeaderRow: {
     flexDirection: 'row',

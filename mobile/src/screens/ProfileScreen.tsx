@@ -15,6 +15,7 @@ import { colors, shadows } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
 import { listRecentPatterns, PatternListItem, getUserStash } from '../services/patternStorage';
+import { HoopIcon, NeedleIcon, HearthFlameIcon, FlowerIcon, RusticDivider } from '../components/RusticIcons';
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
@@ -65,13 +66,13 @@ export default function ProfileScreen() {
           <View style={[styles.profileCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
             <View style={styles.profileHeaderRow}>
               <View style={[styles.avatarBox, { backgroundColor: theme.primaryLight, borderColor: theme.primaryBorder }]}>
-                <Text style={{ fontSize: 36 }}>🪡</Text>
+                <NeedleIcon size={32} color={theme.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <View style={styles.titleRow}>
                   <Text style={[styles.userName, { color: theme.textPrimary }]}>Hafciarka Kasia</Text>
                   <View style={[styles.levelBadge, { backgroundColor: theme.caramelLight, borderColor: theme.caramelBorder }]}>
-                    <Text style={[styles.levelBadgeText, { color: theme.caramelDark }]}>🏆 Złota Igła (Poz. 4)</Text>
+                    <Text style={[styles.levelBadgeText, { color: theme.caramelDark }]}>Złota Igła (Poz. 4)</Text>
                   </View>
                 </View>
                 <Text style={[styles.userBio, { color: theme.textSecondary }]}>
@@ -83,7 +84,7 @@ export default function ProfileScreen() {
             {/* Streak & Daily Progress Row */}
             <View style={styles.streakBanner}>
               <View style={[styles.streakBox, { backgroundColor: theme.primaryLight }]}>
-                <Text style={styles.streakEmoji}>🔥</Text>
+                <HearthFlameIcon size={20} color="#E65100" />
                 <View>
                   <Text style={[styles.streakNumber, { color: theme.primaryDark }]}>{streakDays} dni</Text>
                   <Text style={[styles.streakLabel, { color: theme.textSecondary }]}>Seria z haftem</Text>
@@ -91,7 +92,7 @@ export default function ProfileScreen() {
               </View>
 
               <View style={[styles.streakBox, { backgroundColor: theme.sageLight }]}>
-                <Text style={styles.streakEmoji}>⚡</Text>
+                <NeedleIcon size={18} color={theme.sageDark} />
                 <View>
                   <Text style={[styles.streakNumber, { color: theme.sageDark }]}>+{stitchesToday}</Text>
                   <Text style={[styles.streakLabel, { color: theme.textSecondary }]}>Wkłuć dzisiaj</Text>
@@ -99,7 +100,7 @@ export default function ProfileScreen() {
               </View>
 
               <View style={[styles.streakBox, { backgroundColor: theme.lavenderLight }]}>
-                <Text style={styles.streakEmoji}>⏱️</Text>
+                <FlowerIcon size={18} color={theme.lavender} />
                 <View>
                   <Text style={[styles.streakNumber, { color: theme.lavender }]}>{stitchingSpeedPerHour}/h</Text>
                   <Text style={[styles.streakLabel, { color: theme.textSecondary }]}>Średnie tempo</Text>
@@ -113,20 +114,20 @@ export default function ProfileScreen() {
               onPress={() => setShowShareModal(true)}
               activeOpacity={0.88}
             >
-              <Text style={styles.shareStoryBtnText}>📸 Wygeneruj pastelową kartę na Instagram Stories / TikTok</Text>
+              <Text style={styles.shareStoryBtnText}>Wygeneruj pastelową kartę na Stories / TikTok</Text>
             </TouchableOpacity>
           </View>
 
           {/* Badges & Achievements */}
           <View style={[styles.sectionCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
-            <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>🎖️ Odznaki & Osiągnięcia</Text>
+            <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Odznaki & Osiągnięcia</Text>
             <View style={styles.badgesGrid}>
               {[
-                { emoji: '🌟', title: 'Pierwszy tamborek', desc: 'Ukończono 1 pełny schemat', earned: true },
-                { emoji: '🧵', title: 'Kolekcjoner Mulin', desc: `${totalStashColors} kolorów w piórniku`, earned: true },
-                { emoji: '🦉', title: 'Nocny Marek', desc: 'Haftowanie w trybie OLED po 21:00', earned: true },
-                { emoji: '🚀', title: 'Maraton Igły', desc: '7 dni haftowania z rzędu', earned: true },
-                { emoji: '🎨', title: 'Mistrz Barw', desc: 'Projekt z ponad 50 kolorami', earned: false },
+                { title: 'Pierwszy tamborek', desc: 'Ukończono 1 pełny schemat', earned: true },
+                { title: 'Kolekcjoner Mulin', desc: `${totalStashColors} kolorów w piórniku`, earned: true },
+                { title: 'Nocny Marek', desc: 'Haftowanie w trybie OLED po 21:00', earned: true },
+                { title: 'Maraton Igły', desc: '7 dni haftowania z rzędu', earned: true },
+                { title: 'Mistrz Barw', desc: 'Projekt z ponad 50 kolorami', earned: false },
               ].map((badge, idx) => (
                 <View
                   key={idx}
@@ -136,7 +137,7 @@ export default function ProfileScreen() {
                     !badge.earned && { opacity: 0.45 },
                   ]}
                 >
-                  <Text style={{ fontSize: 28, marginBottom: 4 }}>{badge.emoji}</Text>
+                  <HoopIcon size={24} color={badge.earned ? theme.primary : theme.textMuted} style={{ marginBottom: 4 }} />
                   <Text style={[styles.badgeTitle, { color: theme.textPrimary }]}>{badge.title}</Text>
                   <Text style={[styles.badgeDesc, { color: theme.textSecondary }]}>{badge.desc}</Text>
                   {badge.earned ? (
@@ -152,7 +153,7 @@ export default function ProfileScreen() {
           {/* Active Work In Progress (WIP) */}
           <View style={[styles.sectionCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>🧵 Moje Tamborki (Projekty WIP)</Text>
+              <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Moje Tamborki (Projekty WIP)</Text>
               <TouchableOpacity onPress={() => navigation.navigate('ImagePicker')}>
                 <Text style={[styles.addLink, { color: theme.primaryDark }]}>+ Nowy wzór</Text>
               </TouchableOpacity>
@@ -160,7 +161,7 @@ export default function ProfileScreen() {
 
             {patterns.length === 0 ? (
               <View style={styles.emptyWip}>
-                <Text style={{ fontSize: 32, marginBottom: 6 }}>🪡</Text>
+                <HoopIcon size={34} color={theme.primary} style={{ marginBottom: 6 }} />
                 <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
                   Brak zapisanych projektów. Wybierz gotowy wzór lub zaimportuj plik .saga/.pdf!
                 </Text>
@@ -168,7 +169,7 @@ export default function ProfileScreen() {
                   style={[styles.startBtn, { backgroundColor: theme.primary }]}
                   onPress={() => navigation.navigate('PatternEditor', { patternId: 'demo' })}
                 >
-                  <Text style={styles.startBtnText}>Otwórz wzór demonstracyjny ➔</Text>
+                  <Text style={styles.startBtnText}>Otwórz wzór demonstracyjny ›</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -212,12 +213,12 @@ export default function ProfileScreen() {
             {/* Pastel Aesthetic Social Story Preview */}
             <View style={styles.socialStoryCard}>
               <View style={styles.storyTop}>
-                <Text style={styles.storyLogo}>🧵 Mu'alina</Text>
+                <Text style={styles.storyLogo}>Mu'Alina</Text>
                 <Text style={styles.storyDate}>{new Date().toLocaleDateString('pl-PL')}</Text>
               </View>
 
               <View style={styles.storyArtContainer}>
-                <Text style={{ fontSize: 48 }}>🌸</Text>
+                <HoopIcon size={52} color={theme.primary} />
                 <Text style={styles.storyProjectName}>Górski Krajobraz (Haft Krzyżykowy)</Text>
               </View>
 
@@ -227,7 +228,7 @@ export default function ProfileScreen() {
                   <Text style={styles.storyStatTxt}>Wkłuć dzisiaj</Text>
                 </View>
                 <View style={styles.storyStatItem}>
-                  <Text style={styles.storyStatNum}>🔥 {streakDays} dni</Text>
+                  <Text style={styles.storyStatNum}>{streakDays} dni</Text>
                   <Text style={styles.storyStatTxt}>Seria haftu</Text>
                 </View>
                 <View style={styles.storyStatItem}>
@@ -236,14 +237,14 @@ export default function ProfileScreen() {
                 </View>
               </View>
 
-              <Text style={styles.storyFooter}>Tworzone z miłością w aplikacji Mu'alina</Text>
+              <Text style={styles.storyFooter}>Tworzone z miłością w aplikacji Mu'Alina</Text>
             </View>
 
             <TouchableOpacity
               style={[styles.shareActionBtn, { backgroundColor: theme.primary }]}
               onPress={handleShareStory}
             >
-              <Text style={styles.shareActionBtnText}>📲 Udostępnij na Instagram Stories / Zapisz</Text>
+              <Text style={styles.shareActionBtnText}>Udostępnij na Stories / Zapisz</Text>
             </TouchableOpacity>
           </View>
         </View>

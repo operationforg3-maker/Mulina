@@ -112,7 +112,7 @@ export default function MarketplaceScreen() {
     { key: 'flowers', label: 'Kwiaty' },
     { key: 'animals', label: 'Zwierzęta' },
     { key: 'seasonal', label: 'Krajobrazy' },
-    { key: 'vip', label: '⭐ Club VIP' },
+    { key: 'vip', label: 'Club VIP' },
   ];
 
   useEffect(() => {
@@ -251,7 +251,7 @@ export default function MarketplaceScreen() {
       {/* Banner CTA for Creators */}
       <View style={[styles.bannerCta, { backgroundColor: themeMode === 'cozy' ? '#FFF9C4' : theme.backgroundAlt }]}>
         <Text style={[styles.bannerText, { color: themeMode === 'cozy' ? '#78350F' : theme.textPrimary }]}>
-          🎨 Jesteś projektantem? Wgrywaj pliki .PDF i .SAGA ze znakiem wodnym DRM i zarabiaj 80-90% ze sprzedaży!
+          Jesteś projektantem? Wgrywaj pliki .PDF i .SAGA ze znakiem wodnym DRM i zarabiaj 80-90% ze sprzedaży!
         </Text>
       </View>
 
@@ -260,7 +260,7 @@ export default function MarketplaceScreen() {
         <View style={styles.headerTop}>
           <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Mu'alina Marketplace</Text>
           <TouchableOpacity style={[styles.homeButton, { backgroundColor: theme.backgroundAlt }]} onPress={() => (navigation as any).navigate('Home')}>
-            <Text style={[styles.homeButtonText, { color: theme.textPrimary }]}>← Tamborek</Text>
+            <Text style={[styles.homeButtonText, { color: theme.textPrimary }]}>‹ Tamborek</Text>
           </TouchableOpacity>
         </View>
         <TextInput

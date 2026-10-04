@@ -20,6 +20,25 @@ import { colors, shadows } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
 import PatternCanvasViewport from '../components/PatternCanvasViewport';
+import {
+  FlowerIcon,
+  CraftShopIcon,
+  PdfStitchIcon,
+  NeedleIcon,
+  FrameBoxIcon,
+  PearlPinIcon,
+  LockCraftIcon,
+  ZoomMagnifierIcon,
+  PencilCraftIcon,
+  EraserCraftIcon,
+  FillBucketIcon,
+  CrossStitchIcon,
+  SymbolGlyphIcon,
+  ColorPaletteIcon,
+  FlossSkeinIcon,
+  StitchHistoryIcon,
+  WandIcon,
+} from '../components/RusticIcons';
 
 type RootStackParamList = {
   Home: undefined;
@@ -263,7 +282,7 @@ export default function PatternEditorScreen() {
       if (existingIdx >= 0) {
         const next = parkedThreads.filter((_, i) => i !== existingIdx);
         setParkedThreads(next);
-        setGestureToast('📍 Usunięto zaparkowaną nitkę');
+        setGestureToast('Usunięto zaparkowaną nitkę');
       } else {
         const t = color_palette[selectedColorIndex];
         const next = [
@@ -277,7 +296,7 @@ export default function PatternEditorScreen() {
           },
         ];
         setParkedThreads(next);
-        setGestureToast(`📍 Zaparkowano nitkę ${t.thread_brand} ${t.thread_code} (${parkingCorner})`);
+        setGestureToast(`Zaparkowano nitkę ${t.thread_brand} ${t.thread_code} (${parkingCorner})`);
       }
       setTimeout(() => setGestureToast(null), 1500);
       return;
@@ -460,7 +479,7 @@ export default function PatternEditorScreen() {
       const prev = history[historyStep - 1];
       setPattern(prevPat => prevPat ? { ...prevPat, grid_data: { ...prevPat.grid_data, grid: prev } } : null);
       setHistoryStep(prevStep => prevStep - 1);
-      setGestureToast('↶ Cofnięto (gest 2 palców / Undo)');
+      setGestureToast('Cofnięto (Undo)');
       setTimeout(() => setGestureToast(null), 1800);
     }
   }, [history, historyStep]);
@@ -470,7 +489,7 @@ export default function PatternEditorScreen() {
       const next = history[historyStep + 1];
       setPattern(prevPat => prevPat ? { ...prevPat, grid_data: { ...prevPat.grid_data, grid: next } } : null);
       setHistoryStep(prevStep => prevStep + 1);
-      setGestureToast('↷ Ponowiono (gest 3 palców / Redo)');
+      setGestureToast('Ponowiono (Redo)');
       setTimeout(() => setGestureToast(null), 1800);
     }
   }, [history, historyStep]);
@@ -486,7 +505,7 @@ export default function PatternEditorScreen() {
       }
       return updated;
     });
-    setGestureToast('🧵 Przełączono obrys (backstitch)');
+    setGestureToast('Przełączono obrys (backstitch)');
     setTimeout(() => setGestureToast(null), 1500);
   };
 
@@ -520,7 +539,7 @@ export default function PatternEditorScreen() {
       };
       savePattern(updated as any);
     }
-    setGestureToast(`✨ Zaznaczono ramką: ${count} ściegów`);
+    setGestureToast(`Zaznaczono ramką: ${count} ściegów`);
     setTimeout(() => setGestureToast(null), 2000);
     setIsBoxSelecting(false);
     setBoxStart(null);
@@ -682,37 +701,42 @@ export default function PatternEditorScreen() {
           <View style={styles.headerActionsGroup}>
             {/* Theme switcher (Cozy / OLED Dark / Eye Guard) */}
             <TouchableOpacity 
-              style={[styles.headerThemeBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]} 
+              style={[styles.headerThemeBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder, flexDirection: 'row', alignItems: 'center', gap: 4 }]} 
               onPress={toggleTheme}
               activeOpacity={0.8}
               accessibilityLabel="Zmień motyw"
             >
-              <Text style={[styles.headerThemeBtnText, { color: theme.textPrimary }]}>
-                {themeMode === 'cozy' ? (isTabletOrLarger ? '🌸 Pastel' : '🌸') : themeMode === 'oled' ? (isTabletOrLarger ? '🌙 OLED' : '🌙') : (isTabletOrLarger ? '🔴 Ochrona' : '🔴')}
-              </Text>
+              <FlowerIcon size={14} color={theme.primary} />
+              {isTabletOrLarger && (
+                <Text style={[styles.headerThemeBtnText, { color: theme.textPrimary }]}>
+                  {themeMode === 'cozy' ? 'Pastel' : themeMode === 'oled' ? 'OLED' : 'Ochrona'}
+                </Text>
+              )}
             </TouchableOpacity>
 
             {/* 1-Click Shopping / Stash comparator */}
             <TouchableOpacity 
-              style={[styles.headerShopBtn, { backgroundColor: theme.sage }]} 
+              style={[styles.headerShopBtn, { backgroundColor: theme.sage, flexDirection: 'row', alignItems: 'center', gap: 4 }]} 
               onPress={() => setShowShopModal(true)} 
               activeOpacity={0.85}
               accessibilityLabel="Kup nici"
             >
-              <Text style={styles.headerShopBtnText}>
-                {isTabletOrLarger ? '🛍️ Kup nici' : '🛍️'}
-              </Text>
+              <CraftShopIcon size={15} color="#FFFFFF" />
+              {isTabletOrLarger && (
+                <Text style={styles.headerShopBtnText}>Kup nici</Text>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.pdfBtn, { backgroundColor: theme.primary }]} 
+              style={[styles.pdfBtn, { backgroundColor: theme.primary, flexDirection: 'row', alignItems: 'center', gap: 4 }]} 
               onPress={handleExportPdf} 
               activeOpacity={0.85}
               accessibilityLabel="Pobierz PDF"
             >
-              <Text style={styles.pdfBtnText}>
-                {isTabletOrLarger ? '📄 PDF' : '📄'}
-              </Text>
+              <PdfStitchIcon size={15} color="#FFFFFF" />
+              {isTabletOrLarger && (
+                <Text style={styles.pdfBtnText}>PDF</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -752,7 +776,7 @@ export default function PatternEditorScreen() {
               style={[styles.toolBtn, activeTool === 'stitch' && styles.toolBtnActive]}
               onPress={() => setActiveTool('stitch')}
             >
-              <Text style={styles.toolIcon}>🪡</Text>
+              <NeedleIcon size={16} color={activeTool === 'stitch' ? colors.primaryDark : colors.textSecondary} />
               <Text style={[styles.toolText, activeTool === 'stitch' && styles.toolTextActive]}>Haftuj</Text>
             </TouchableOpacity>
 
@@ -765,7 +789,7 @@ export default function PatternEditorScreen() {
                 setBoxStart(null);
               }}
             >
-              <Text style={styles.toolIcon}>🔲</Text>
+              <FrameBoxIcon size={16} color={activeTool === 'box_select' ? colors.primaryDark : colors.textSecondary} />
               <Text style={[styles.toolText, activeTool === 'box_select' && styles.toolTextActive]}>Ramka</Text>
             </TouchableOpacity>
 
@@ -783,7 +807,7 @@ export default function PatternEditorScreen() {
                 }
               }}
             >
-              <Text style={styles.toolIcon}>📍</Text>
+              <PearlPinIcon size={16} color={activeTool === 'parking' ? colors.primaryDark : colors.textSecondary} />
               <Text style={[styles.toolText, activeTool === 'parking' && styles.toolTextActive]}>
                 Parkuj ({parkingCorner})
               </Text>
@@ -796,7 +820,7 @@ export default function PatternEditorScreen() {
                 onPress={() => setStitchLock(!stitchLock)}
                 activeOpacity={0.85}
               >
-                <Text style={styles.lockIcon}>{stitchLock ? '🔒' : '🔓'}</Text>
+                <LockCraftIcon size={14} locked={stitchLock} color={stitchLock ? colors.sageDark : colors.textMuted} />
                 <Text style={[styles.lockText, stitchLock && styles.lockTextActive]}>
                   {stitchLock ? 'Przeciągaj' : 'Przewijaj'}
                 </Text>
@@ -807,7 +831,7 @@ export default function PatternEditorScreen() {
               style={[styles.toolBtn, activeTool === 'picker' && styles.toolBtnActive]}
               onPress={() => setActiveTool('picker')}
             >
-              <Text style={styles.toolIcon}>🔍</Text>
+              <ZoomMagnifierIcon size={16} type="in" color={activeTool === 'picker' ? colors.primaryDark : colors.textSecondary} />
               <Text style={[styles.toolText, activeTool === 'picker' && styles.toolTextActive]}>Pipeta</Text>
             </TouchableOpacity>
 
@@ -815,7 +839,7 @@ export default function PatternEditorScreen() {
               style={[styles.toolBtn, activeTool === 'pencil' && styles.toolBtnActive]}
               onPress={() => setActiveTool('pencil')}
             >
-              <Text style={styles.toolIcon}>✏️</Text>
+              <PencilCraftIcon size={16} color={activeTool === 'pencil' ? colors.primaryDark : colors.textSecondary} />
               <Text style={[styles.toolText, activeTool === 'pencil' && styles.toolTextActive]}>Rysuj</Text>
             </TouchableOpacity>
 
@@ -823,7 +847,7 @@ export default function PatternEditorScreen() {
               style={[styles.toolBtn, activeTool === 'eraser' && styles.toolBtnActive]}
               onPress={() => setActiveTool('eraser')}
             >
-              <Text style={styles.toolIcon}>🧹</Text>
+              <EraserCraftIcon size={16} color={activeTool === 'eraser' ? colors.primaryDark : colors.textSecondary} />
               <Text style={[styles.toolText, activeTool === 'eraser' && styles.toolTextActive]}>Gumka</Text>
             </TouchableOpacity>
 
@@ -831,7 +855,7 @@ export default function PatternEditorScreen() {
               style={[styles.toolBtn, activeTool === 'fill' && styles.toolBtnActive]}
               onPress={() => setActiveTool('fill')}
             >
-              <Text style={styles.toolIcon}>🪣</Text>
+              <FillBucketIcon size={16} color={activeTool === 'fill' ? colors.primaryDark : colors.textSecondary} />
               <Text style={[styles.toolText, activeTool === 'fill' && styles.toolTextActive]}>Wypełnij</Text>
             </TouchableOpacity>
           </View>
@@ -844,21 +868,24 @@ export default function PatternEditorScreen() {
               style={[styles.smallModeBtn, viewMode === 'stitches' && styles.smallModeBtnActive]}
               onPress={() => setViewMode('stitches')}
             >
-              <Text style={[styles.modeText, viewMode === 'stitches' && styles.modeTextActive]}>✕ Krzyżyki</Text>
+              <CrossStitchIcon size={13} color={viewMode === 'stitches' ? colors.textInverted : colors.textSecondary} />
+              <Text style={[styles.modeText, viewMode === 'stitches' && styles.modeTextActive]}>Krzyżyki</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.smallModeBtn, viewMode === 'symbols' && styles.smallModeBtnActive]}
               onPress={() => setViewMode('symbols')}
             >
-              <Text style={[styles.modeText, viewMode === 'symbols' && styles.modeTextActive]}>🔣 Symbole</Text>
+              <SymbolGlyphIcon size={13} color={viewMode === 'symbols' ? colors.textInverted : colors.textSecondary} />
+              <Text style={[styles.modeText, viewMode === 'symbols' && styles.modeTextActive]}>Symbole</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.smallModeBtn, viewMode === 'colors' && styles.smallModeBtnActive]}
               onPress={() => setViewMode('colors')}
             >
-              <Text style={[styles.modeText, viewMode === 'colors' && styles.modeTextActive]}>🎨 Kolory</Text>
+              <ColorPaletteIcon size={13} color={viewMode === 'colors' ? colors.textInverted : colors.textSecondary} />
+              <Text style={[styles.modeText, viewMode === 'colors' && styles.modeTextActive]}>Kolory</Text>
             </TouchableOpacity>
 
             {/* Backstitch Toggle */}
@@ -867,8 +894,9 @@ export default function PatternEditorScreen() {
                 style={[styles.smallModeBtn, showBackstitch && styles.smallModeBtnActive]}
                 onPress={() => setShowBackstitch(!showBackstitch)}
               >
+                <FlossSkeinIcon size={13} color={showBackstitch ? colors.textInverted : colors.textSecondary} />
                 <Text style={[styles.modeText, showBackstitch && styles.modeTextActive]}>
-                  🧵 Obrys ({backstitchLines.filter(b => b.completed).length}/{backstitchLines.length})
+                  Obrys ({backstitchLines.filter(b => b.completed).length}/{backstitchLines.length})
                 </Text>
               </TouchableOpacity>
             )}
@@ -878,21 +906,21 @@ export default function PatternEditorScreen() {
 
           {/* Zoom & History Controls */}
           <View style={styles.toolGroup}>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => setCellSize(Math.max(12, cellSize - 3))}>
-              <Text style={styles.iconBtnText}>🔍−</Text>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => setCellSize(Math.max(12, cellSize - 3))} accessibilityLabel="Pomniejsz">
+              <ZoomMagnifierIcon size={15} type="out" color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.zoomLabel}>{cellSize}px</Text>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => setCellSize(Math.min(38, cellSize + 3))}>
-              <Text style={styles.iconBtnText}>🔍+</Text>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => setCellSize(Math.min(38, cellSize + 3))} accessibilityLabel="Powiększ">
+              <ZoomMagnifierIcon size={15} type="in" color={colors.textPrimary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconBtn} onPress={handleUndo} disabled={historyStep <= 0} accessibilityLabel="Cofnij">
-              <Text style={[styles.iconBtnText, historyStep <= 0 && styles.disabledText]}>↶</Text>
+              <StitchHistoryIcon size={15} direction="undo" color={historyStep <= 0 ? colors.textMuted : colors.textPrimary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconBtn} onPress={handleRedo} disabled={historyStep >= history.length - 1} accessibilityLabel="Ponów">
-              <Text style={[styles.iconBtnText, historyStep >= history.length - 1 && styles.disabledText]}>↷</Text>
+              <StitchHistoryIcon size={15} direction="redo" color={historyStep >= history.length - 1 ? colors.textMuted : colors.textPrimary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} onPress={handleRemoveConfetti} accessibilityLabel="Usuń confetti">
-              <Text style={styles.iconBtnText}>🪄</Text>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleRemoveConfetti} accessibilityLabel="Usuń pojedyncze krzyżyki">
+              <WandIcon size={15} color={colors.primaryDark} />
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -947,7 +975,7 @@ export default function PatternEditorScreen() {
                 onPress={() => setHighlightColorIndex(highlightColorIndex === selectedColorIndex ? null : selectedColorIndex)}
               >
                 <Text style={[styles.sidebarHighlightBtnText, highlightColorIndex === selectedColorIndex && styles.sidebarHighlightBtnTextActive]}>
-                  {highlightColorIndex === selectedColorIndex ? '👁️ Pokaż wszystkie kolory' : '🎯 Skup się na tym kolorze (izoluj)'}
+                  {highlightColorIndex === selectedColorIndex ? 'Pokaż wszystkie kolory' : 'Skup się na tym kolorze (izoluj)'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -956,7 +984,7 @@ export default function PatternEditorScreen() {
             <View style={styles.sidebarListHeader}>
               <Text style={styles.sidebarListTitle}>Paleta wzoru ({color_palette.length} nici):</Text>
               <TouchableOpacity onPress={() => setShowLegendModal(true)}>
-                <Text style={styles.sidebarListLink}>📋 Zakupy</Text>
+                <Text style={styles.sidebarListLink}>Zakupy</Text>
               </TouchableOpacity>
             </View>
 
@@ -1012,14 +1040,14 @@ export default function PatternEditorScreen() {
           <View style={[styles.paletteBar, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
             <View style={styles.paletteHeaderRow}>
               <Text style={styles.paletteTitle}>
-                🧵 Nici ({color_palette.length} kolorów DMC):
+                Nici ({color_palette.length} kolorów DMC):
               </Text>
               <TouchableOpacity
                 style={styles.legendToggleBtn}
                 onPress={() => setShowLegendModal(!showLegendModal)}
               >
                 <Text style={styles.legendToggleText}>
-                  {showLegendModal ? 'Ukryj listę' : '📋 Pełna lista & metry'}
+                  {showLegendModal ? 'Ukryj listę' : 'Pełna lista & metry'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1062,7 +1090,7 @@ export default function PatternEditorScreen() {
       {showLegendModal && (
         <View style={[styles.legendDrawer, { backgroundColor: theme.surface }]}>
           <View style={styles.drawerHeader}>
-            <Text style={[styles.drawerTitle, { color: theme.textPrimary }]}>🧵 Wykaz mulin i zapotrzebowanie (DMC)</Text>
+            <Text style={[styles.drawerTitle, { color: theme.textPrimary }]}>Wykaz mulin i zapotrzebowanie (DMC)</Text>
             <TouchableOpacity onPress={() => setShowLegendModal(false)}>
               <Text style={styles.drawerClose}>✕ Zamknij</Text>
             </TouchableOpacity>
@@ -1113,7 +1141,7 @@ export default function PatternEditorScreen() {
           <View style={[styles.legendDrawer, { height: '70%', backgroundColor: theme.surface }]}>
             <View style={styles.drawerHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.drawerTitle, { color: theme.textPrimary }]}>🛍️ Koszyk Mulin (1-Click Buy)</Text>
+                <Text style={[styles.drawerTitle, { color: theme.textPrimary }]}>Koszyk Mulin (1-Click Buy)</Text>
                 <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
                   Porównano z Twoim piórnikiem: brakuje {totalMissing} pasemek (~{totalCost} zł)
                 </Text>
@@ -1385,6 +1413,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   smallModeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderRadius: 8,

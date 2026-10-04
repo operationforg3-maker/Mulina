@@ -17,6 +17,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { listRecentPatterns, PatternListItem, deletePattern, savePattern } from '../services/patternStorage';
 import * as DocumentPicker from 'expo-document-picker';
 import { parsePatternFile } from '../services/parsers/patternParsers';
+import { HoopIcon, NeedleIcon, ZoomMagnifierIcon, RusticDivider } from '../components/RusticIcons';
 
 export default function PatternLibraryScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -137,7 +138,7 @@ export default function PatternLibraryScreen() {
         activeOpacity={0.88}
       >
         <View style={[styles.thumbBox, { backgroundColor: theme.backgroundAlt }]}>
-          <Text style={{ fontSize: 32 }}>{isCompleted ? '🏆' : '🪡'}</Text>
+          <HoopIcon size={34} color={isCompleted ? theme.success : theme.primary} />
           <View style={styles.formatBadge}>
             <Text style={styles.formatBadgeText}>
               {item.pattern_id.startsWith('mkt-') ? 'DRM' : 'SAGA/XSD'}
@@ -184,7 +185,7 @@ export default function PatternLibraryScreen() {
             <Text style={[styles.dateText, { color: theme.textMuted }]}>
               Ostatnio: {new Date(item.updated_at).toLocaleDateString('pl-PL')}
             </Text>
-            <Text style={[styles.openLink, { color: theme.primary }]}>Otwórz ➔</Text>
+            <Text style={[styles.openLink, { color: theme.primary }]}>Otwórz ›</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -213,7 +214,7 @@ export default function PatternLibraryScreen() {
 
         {/* Search Input */}
         <View style={[styles.searchBox, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}>
-          <Text style={{ fontSize: 16, marginRight: 8 }}>🔍</Text>
+          <ZoomMagnifierIcon size={16} color={theme.textMuted} style={{ marginRight: 8 }} />
           <TextInput
             style={[styles.searchInput, { color: theme.textPrimary }]}
             placeholder="Szukaj po nazwie wzoru..."
@@ -292,7 +293,7 @@ export default function PatternLibraryScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyBox}>
-            <Text style={{ fontSize: 48, marginBottom: 12 }}>🧵</Text>
+            <HoopIcon size={48} color={theme.primary} style={{ marginBottom: 12 }} />
             <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
               {searchQuery ? 'Brak pasujących wzorów' : 'Biblioteka jest pusta'}
             </Text>
@@ -305,7 +306,7 @@ export default function PatternLibraryScreen() {
               style={[styles.emptyBtn, { backgroundColor: theme.primary }]}
               onPress={handleImportFile}
             >
-              <Text style={styles.emptyBtnText}>Wgraj pierwszy plik schematu ➔</Text>
+              <Text style={styles.emptyBtnText}>Wgraj pierwszy plik schematu ›</Text>
             </TouchableOpacity>
           </View>
         }

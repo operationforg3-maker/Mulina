@@ -9,18 +9,44 @@ import {
 } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../theme/ThemeContext';
+import {
+  HoopIcon,
+  PatternFolderIcon,
+  CameraCraftIcon,
+  FlossSkeinIcon,
+  CraftShopIcon,
+} from './RusticIcons';
 
 export default function MuAlinaTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
 
+  const renderTabIcon = (tabName: string, isFocused: boolean) => {
+    const iconColor = isFocused ? theme.primary : theme.textMuted;
+    const secColor = isFocused ? theme.sage : theme.surfaceBorder;
+    switch (tabName) {
+      case 'WorkshopTab':
+        return <HoopIcon size={22} color={iconColor} secondaryColor={secColor} />;
+      case 'LibraryTab':
+        return <PatternFolderIcon size={22} color={iconColor} />;
+      case 'CreateTab':
+        return <CameraCraftIcon size={24} color="#FFFFFF" />;
+      case 'StashTab':
+        return <FlossSkeinIcon size={22} color={iconColor} secondaryColor={secColor} />;
+      case 'MarketplaceTab':
+        return <CraftShopIcon size={22} color={iconColor} />;
+      default:
+        return <HoopIcon size={22} color={iconColor} />;
+    }
+  };
+
   const tabsConfig = [
-    { name: 'WorkshopTab', label: 'Pracownia', icon: '🧵' },
-    { name: 'LibraryTab', label: 'Wzory', icon: '📁' },
-    { name: 'CreateTab', label: 'Nowy', icon: '📸', isCenter: true },
-    { name: 'StashTab', label: 'Zapas', icon: '🧶' },
-    { name: 'MarketplaceTab', label: 'Sklep', icon: '🎨' },
+    { name: 'WorkshopTab', label: 'Pracownia' },
+    { name: 'LibraryTab', label: 'Wzory' },
+    { name: 'CreateTab', label: 'Nowy', isCenter: true },
+    { name: 'StashTab', label: 'Zapas' },
+    { name: 'MarketplaceTab', label: 'Sklep' },
   ];
 
   return (
@@ -34,7 +60,6 @@ export default function MuAlinaTabBar({ state, descriptors, navigation }: Bottom
             : (options.title || route.name);
           const conf = tabsConfig.find((t) => t.name === route.name) || {
             label: rawLabel,
-            icon: '🧵',
             isCenter: false,
           };
 
@@ -57,6 +82,7 @@ export default function MuAlinaTabBar({ state, descriptors, navigation }: Bottom
                 onPress={onPress}
                 activeOpacity={0.85}
                 style={styles.centerTabWrapper}
+                accessibilityLabel="Nowy wzór haftu"
               >
                 <View
                   style={[
@@ -67,7 +93,7 @@ export default function MuAlinaTabBar({ state, descriptors, navigation }: Bottom
                     },
                   ]}
                 >
-                  <Text style={{ fontSize: 22 }}>📸</Text>
+                  <CameraCraftIcon size={24} color="#FFFFFF" />
                 </View>
                 <Text
                   style={[
@@ -90,8 +116,9 @@ export default function MuAlinaTabBar({ state, descriptors, navigation }: Bottom
                 styles.tabItem,
                 isFocused && { backgroundColor: theme.backgroundAlt, borderRadius: 16 },
               ]}
+              accessibilityLabel={conf.label}
             >
-              <Text style={{ fontSize: isFocused ? 20 : 18 }}>{conf.icon}</Text>
+              {renderTabIcon(route.name, isFocused)}
               <Text
                 style={[
                   styles.tabLabel,

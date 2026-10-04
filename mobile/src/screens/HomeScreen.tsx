@@ -16,8 +16,20 @@ import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
 import { listRecentPatterns, PatternListItem, savePattern } from '../services/patternStorage';
 import * as DocumentPicker from 'expo-document-picker';
-import { parsePatternFile } from '../services/parsers/patternParsers';
 import AndroidDownloadModal from '../components/AndroidDownloadModal';
+import { parsePatternFile } from '../services/parsers/patternParsers';
+import {
+  HoopIcon,
+  NeedleIcon,
+  FlossSkeinIcon,
+  FlowerIcon,
+  BirdIcon,
+  CameraCraftIcon,
+  PatternFolderIcon,
+  CraftShopIcon,
+  HearthFlameIcon,
+  RusticDivider,
+} from '../components/RusticIcons';
 
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -90,10 +102,10 @@ export default function HomeScreen() {
     }
   };
 
-  const getThemeIcon = () => {
-    if (themeMode === 'cozy') return '🌸 Pastel';
-    if (themeMode === 'oled') return '🌙 OLED';
-    return '🔴 Ochrona';
+  const getThemeLabel = () => {
+    if (themeMode === 'cozy') return 'Pastel';
+    if (themeMode === 'oled') return 'OLED';
+    return 'Ochrona';
   };
 
   // Active WIP project: first item from storage or demo
@@ -121,7 +133,8 @@ export default function HomeScreen() {
             onPress={cycleTheme}
             activeOpacity={0.8}
           >
-            <Text style={[styles.themeBtnText, { color: theme.textPrimary }]}>{getThemeIcon()}</Text>
+            <FlowerIcon size={13} color={theme.primary} />
+            <Text style={[styles.themeBtnText, { color: theme.textPrimary, marginLeft: 5 }]}>{getThemeLabel()}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -129,7 +142,8 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('Profile')}
             activeOpacity={0.8}
           >
-            <Text style={styles.streakBtnText}>🔥 7 dni</Text>
+            <HearthFlameIcon size={14} color="#E65100" />
+            <Text style={[styles.streakBtnText, { marginLeft: 4 }]}>7 dni</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -137,7 +151,7 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('Profile')}
             activeOpacity={0.8}
           >
-            <Text style={{ fontSize: 16 }}>👩‍🎨</Text>
+            <BirdIcon size={18} color={theme.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -155,7 +169,7 @@ export default function HomeScreen() {
           />
           <View style={styles.bannerOverlay}>
             <View style={styles.bannerPill}>
-              <Text style={styles.bannerPillText}>🌸 Dedykowane Teściowej Alinie</Text>
+              <Text style={styles.bannerPillText}>Dedykowane Teściowej Alinie</Text>
             </View>
             <Text style={styles.bannerTitle}>Pracownia Haftu Mu'Alina</Text>
             <Text style={styles.bannerSubtitle}>
@@ -166,11 +180,13 @@ export default function HomeScreen() {
 
         {/* Welcome Greeting */}
         <View style={styles.greetingSection}>
-          <Text style={[styles.greetingTitle, { color: theme.textPrimary }]}>Witaj z powrotem! ✨</Text>
+          <Text style={[styles.greetingTitle, { color: theme.textPrimary }]}>Witaj w pracowni haftu</Text>
           <Text style={[styles.greetingSubtitle, { color: theme.textSecondary }]}>
             Dziś wyhaftowano 260 krzyżyków. Tamborek czeka na kolejną nitkę!
           </Text>
         </View>
+
+        <RusticDivider color={theme.primary} secondaryColor={theme.sage} style={{ marginVertical: 8 }} />
 
         {/* HERO CARD: Current Active WIP Tamborek */}
         <View style={[styles.heroCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
@@ -185,8 +201,8 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.heroBodyRow}>
-            <View style={[styles.heroThumb, { backgroundColor: theme.backgroundAlt }]}>
-              <Text style={{ fontSize: 44 }}>{activeWip ? '🪡' : '🌹'}</Text>
+            <View style={[styles.heroThumb, { backgroundColor: theme.backgroundAlt, alignItems: 'center', justifyContent: 'center' }]}>
+              <HoopIcon size={42} color={theme.primary} />
             </View>
             <View style={styles.heroDetails}>
               <Text style={[styles.heroPatternName, { color: theme.textPrimary }]} numberOfLines={1}>
@@ -228,9 +244,12 @@ export default function HomeScreen() {
             }
             activeOpacity={0.88}
           >
-            <Text style={styles.resumeBtnText}>Kontynuuj haftowanie ➔</Text>
+            <NeedleIcon size={18} color="#FFFFFF" />
+            <Text style={[styles.resumeBtnText, { marginLeft: 8 }]}>Kontynuuj haftowanie</Text>
           </TouchableOpacity>
         </View>
+
+        <RusticDivider color={theme.primary} secondaryColor={theme.sage} style={{ marginVertical: 8 }} />
 
         {/* Quick Actions Grid */}
         <View style={styles.sectionHeader}>
@@ -244,7 +263,7 @@ export default function HomeScreen() {
             activeOpacity={0.85}
           >
             <View style={[styles.quickIconCircle, { backgroundColor: '#FCE4EC' }]}>
-              <Text style={{ fontSize: 24 }}>📸</Text>
+              <CameraCraftIcon size={24} color={theme.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.quickTitle, { color: theme.textPrimary }]}>Nowy ze zdjęcia</Text>
@@ -258,7 +277,7 @@ export default function HomeScreen() {
             activeOpacity={0.85}
           >
             <View style={[styles.quickIconCircle, { backgroundColor: '#EDE7F6' }]}>
-              <Text style={{ fontSize: 24 }}>📂</Text>
+              <PatternFolderIcon size={24} color="#7E57C2" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.quickTitle, { color: theme.textPrimary }]}>Wgraj schemat</Text>
@@ -274,7 +293,7 @@ export default function HomeScreen() {
             activeOpacity={0.85}
           >
             <View style={[styles.quickIconCircle, { backgroundColor: '#FFF3E0' }]}>
-              <Text style={{ fontSize: 24 }}>🧶</Text>
+              <FlossSkeinIcon size={24} color="#E65100" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.quickTitle, { color: theme.textPrimary }]}>Zapas Nici & Skaner</Text>
@@ -288,7 +307,7 @@ export default function HomeScreen() {
             activeOpacity={0.85}
           >
             <View style={[styles.quickIconCircle, { backgroundColor: '#E8F5E9' }]}>
-              <Text style={{ fontSize: 24 }}>🎨</Text>
+              <CraftShopIcon size={24} color="#2E7D32" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.quickTitle, { color: theme.textPrimary }]}>Odkryj Wzory</Text>
@@ -300,8 +319,8 @@ export default function HomeScreen() {
         {/* Weekly Streaks Section */}
         <View style={[styles.streakWidget, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
           <View style={styles.streakTopRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={{ fontSize: 20 }}>🔥</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <HearthFlameIcon size={20} color="#E65100" />
               <Text style={[styles.streakWidgetTitle, { color: theme.textPrimary }]}>
                 Twoja Seria Haftowania
               </Text>
@@ -355,8 +374,8 @@ export default function HomeScreen() {
                 onPress={() => navigation.navigate('PatternEditor', { patternId: pat.pattern_id })}
                 activeOpacity={0.85}
               >
-                <View style={[styles.smallWipThumb, { backgroundColor: theme.backgroundAlt }]}>
-                  <Text style={{ fontSize: 24 }}>🪡</Text>
+                <View style={[styles.smallWipThumb, { backgroundColor: theme.backgroundAlt, alignItems: 'center', justifyContent: 'center' }]}>
+                  <NeedleIcon size={22} color={theme.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.smallWipTitle, { color: theme.textPrimary }]} numberOfLines={1}>
@@ -366,7 +385,7 @@ export default function HomeScreen() {
                     {pat.width_stitches}×{pat.height_stitches} krz. • {pat.progress_percent}% wyhaftowane
                   </Text>
                 </View>
-                <Text style={[styles.smallWipArrow, { color: theme.primary }]}>➔</Text>
+                <Text style={[styles.smallWipArrow, { color: theme.primary }]}>›</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -479,6 +498,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   themeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 14,
@@ -489,6 +510,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   streakBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 14,
@@ -617,6 +640,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   resumeBtn: {
+    flexDirection: 'row',
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',

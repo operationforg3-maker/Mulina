@@ -19,6 +19,7 @@ import { colors, shadows } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
 import ListSkeleton from '../components/ListSkeleton';
+import { FlossSkeinIcon, CameraCraftIcon, RusticDivider } from '../components/RusticIcons';
 
 const BRAND_OPTIONS = ['Wszystkie', 'DMC', 'Anchor', 'Ariadna', 'Madeira', 'CXC'] as const;
 
@@ -206,7 +207,7 @@ export default function InventoryScreen() {
           <Text style={[styles.threadCode, { color: theme.textSecondary }]}>
             {item.brand} {item.colorCode}
             {isOwned && stashItem?.assigned_wip && (
-              <Text style={{ color: theme.primaryDark, fontWeight: '700' }}> • 📌 {stashItem.assigned_wip}</Text>
+              <Text style={{ color: theme.primaryDark, fontWeight: '700' }}> • WIP: {stashItem.assigned_wip}</Text>
             )}
           </Text>
         </View>
@@ -263,18 +264,19 @@ export default function InventoryScreen() {
         <View style={[styles.headerCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={[styles.title, { color: theme.textPrimary }]}>🧶 Cyfrowy Piórnik & Zapas</Text>
+              <Text style={[styles.title, { color: theme.textPrimary }]}>Cyfrowy Piórnik & Zapas</Text>
               <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
                 Twój magazyn mulin DMC, Anchor, Ariadna i Madeira z kalkulatorem motków i skanerem kodów EAN.
               </Text>
             </View>
 
             <TouchableOpacity
-              style={[styles.scanBtn, { backgroundColor: theme.primary }]}
+              style={[styles.scanBtn, { backgroundColor: theme.primary, flexDirection: 'row', alignItems: 'center' }]}
               onPress={() => setShowScannerModal(true)}
               activeOpacity={0.85}
             >
-              <Text style={styles.scanBtnText}>📷 Skanuj motek</Text>
+              <CameraCraftIcon size={16} color="#ffffff" style={{ marginRight: 6 }} />
+              <Text style={styles.scanBtnText}>Skanuj motek</Text>
             </TouchableOpacity>
           </View>
 
@@ -412,7 +414,7 @@ export default function InventoryScreen() {
           <View style={styles.modalBackdrop}>
             <View style={[styles.modalCard, { backgroundColor: theme.surface }]}>
               <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>📌 Przypisz do projektu (WIP)</Text>
+                <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Przypisz do projektu (WIP)</Text>
                 <TouchableOpacity onPress={() => setEditingWipThread(null)}>
                   <Text style={styles.modalCloseText}>✕</Text>
                 </TouchableOpacity>

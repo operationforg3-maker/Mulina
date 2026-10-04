@@ -21,6 +21,15 @@ import GlobalLoader from '../components/GlobalLoader';
 import { colors, shadows } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
+import {
+  HoopIcon,
+  NeedleIcon,
+  CameraCraftIcon,
+  PatternFolderIcon,
+  RusticDivider,
+  FrameBoxIcon,
+  FlossSkeinIcon,
+} from '../components/RusticIcons';
 
 type RootStackParamList = {
   Home: undefined;
@@ -33,19 +42,19 @@ type ImagePickerNavigationProp = NativeStackNavigationProp<RootStackParamList, '
 const PRESET_IMAGES = [
   {
     id: 'rose',
-    name: '🌹 Czerwona Róża',
+    name: 'Czerwona Róża',
     url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300',
     aspect: 1.0,
   },
   {
     id: 'cat',
-    name: '🐱 Rudzielec (5:4)',
+    name: 'Rudzielec (5:4)',
     url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=300',
     aspect: 1.25,
   },
   {
     id: 'landscape',
-    name: '🏔️ Krajobraz (3:2 / 1.5:1)',
+    name: 'Krajobraz (3:2 / 1.5:1)',
     url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=300',
     aspect: 0.67,
   },
@@ -58,30 +67,29 @@ export interface CanvasFormatItem {
   desc: string;
   widthCm: number;
   heightCm: number;
-  icon: string;
   isRound?: boolean;
 }
 
 export const CANVAS_FORMATS: CanvasFormatItem[] = [
   // Ramki i standardowe formaty
-  { id: 'frame_10_15', category: 'frame', name: '10 × 15 cm', desc: 'Klasyczna mała ramka foto', widthCm: 10, heightCm: 15, icon: '🖼️' },
-  { id: 'frame_13_18', category: 'frame', name: '13 × 18 cm', desc: 'Popularna ramka średnia', widthCm: 13, heightCm: 18, icon: '🖼️' },
-  { id: 'frame_15_20', category: 'frame', name: '15 × 20 cm', desc: 'Duża ramka stojąca', widthCm: 15, heightCm: 20, icon: '🖼️' },
-  { id: 'frame_18_24', category: 'frame', name: '18 × 24 cm', desc: 'Średnia ramka ścienna', widthCm: 18, heightCm: 24, icon: '🖼️' },
-  { id: 'frame_20_25', category: 'frame', name: '20 × 25 cm', desc: 'Portret lub kwadrat', widthCm: 20, heightCm: 25, icon: '🖼️' },
-  { id: 'frame_21_30', category: 'frame', name: '21 × 30 cm (A4)', desc: 'Standardowy arkusz A4', widthCm: 21, heightCm: 29.7, icon: '📄' },
-  { id: 'frame_30_40', category: 'frame', name: '30 × 40 cm', desc: 'Ścienny obraz dekoracyjny', widthCm: 30, heightCm: 40, icon: '🖼️' },
-  { id: 'frame_40_50', category: 'frame', name: '40 × 50 cm', desc: 'Duży motyw wystawowy', widthCm: 40, heightCm: 50, icon: '🖼️' },
-  { id: 'frame_50_70', category: 'frame', name: '50 × 70 cm', desc: 'Wielka reprodukcja / plakat', widthCm: 50, heightCm: 70, icon: '🏛️' },
+  { id: 'frame_10_15', category: 'frame', name: '10 × 15 cm', desc: 'Klasyczna mała ramka foto', widthCm: 10, heightCm: 15 },
+  { id: 'frame_13_18', category: 'frame', name: '13 × 18 cm', desc: 'Popularna ramka średnia', widthCm: 13, heightCm: 18 },
+  { id: 'frame_15_20', category: 'frame', name: '15 × 20 cm', desc: 'Duża ramka stojąca', widthCm: 15, heightCm: 20 },
+  { id: 'frame_18_24', category: 'frame', name: '18 × 24 cm', desc: 'Średnia ramka ścienna', widthCm: 18, heightCm: 24 },
+  { id: 'frame_20_25', category: 'frame', name: '20 × 25 cm', desc: 'Portret lub kwadrat', widthCm: 20, heightCm: 25 },
+  { id: 'frame_21_30', category: 'frame', name: '21 × 30 cm (A4)', desc: 'Standardowy arkusz A4', widthCm: 21, heightCm: 29.7 },
+  { id: 'frame_30_40', category: 'frame', name: '30 × 40 cm', desc: 'Ścienny obraz dekoracyjny', widthCm: 30, heightCm: 40 },
+  { id: 'frame_40_50', category: 'frame', name: '40 × 50 cm', desc: 'Duży motyw wystawowy', widthCm: 40, heightCm: 50 },
+  { id: 'frame_50_70', category: 'frame', name: '50 × 70 cm', desc: 'Wielka reprodukcja / plakat', widthCm: 50, heightCm: 70 },
 
   // Tamborki okrągłe
-  { id: 'hoop_10', category: 'hoop', name: 'Tamborek 10 cm (4")', desc: 'Mini zawieszka / brelok', widthCm: 9, heightCm: 9, isRound: true, icon: '⭕' },
-  { id: 'hoop_13', category: 'hoop', name: 'Tamborek 13 cm (5")', desc: 'Mały tamborek ozdobny', widthCm: 12, heightCm: 12, isRound: true, icon: '⭕' },
-  { id: 'hoop_16', category: 'hoop', name: 'Tamborek 16 cm (6.5")', desc: 'Najpopularniejszy standard', widthCm: 15, heightCm: 15, isRound: true, icon: '⭕' },
-  { id: 'hoop_18', category: 'hoop', name: 'Tamborek 18 cm (7")', desc: 'Średni tamborek bambusowy', widthCm: 17, heightCm: 17, isRound: true, icon: '⭕' },
-  { id: 'hoop_20', category: 'hoop', name: 'Tamborek 20 cm (8")', desc: 'Duży motyw tamborkowy', widthCm: 19, heightCm: 19, isRound: true, icon: '⭕' },
-  { id: 'hoop_25', category: 'hoop', name: 'Tamborek 25 cm (10")', desc: 'Bardzo duża kompozycja', widthCm: 24, heightCm: 24, isRound: true, icon: '⭕' },
-  { id: 'hoop_30', category: 'hoop', name: 'Tamborek 30 cm (12")', desc: 'Maksymalny tamborek', widthCm: 28, heightCm: 28, isRound: true, icon: '⭕' },
+  { id: 'hoop_10', category: 'hoop', name: 'Tamborek 10 cm (4")', desc: 'Mini zawieszka / brelok', widthCm: 9, heightCm: 9, isRound: true },
+  { id: 'hoop_13', category: 'hoop', name: 'Tamborek 13 cm (5")', desc: 'Mały tamborek ozdobny', widthCm: 12, heightCm: 12, isRound: true },
+  { id: 'hoop_16', category: 'hoop', name: 'Tamborek 16 cm (6.5")', desc: 'Najpopularniejszy standard', widthCm: 15, heightCm: 15, isRound: true },
+  { id: 'hoop_18', category: 'hoop', name: 'Tamborek 18 cm (7")', desc: 'Średni tamborek bambusowy', widthCm: 17, heightCm: 17, isRound: true },
+  { id: 'hoop_20', category: 'hoop', name: 'Tamborek 20 cm (8")', desc: 'Duży motyw tamborkowy', widthCm: 19, heightCm: 19, isRound: true },
+  { id: 'hoop_25', category: 'hoop', name: 'Tamborek 25 cm (10")', desc: 'Bardzo duża kompozycja', widthCm: 24, heightCm: 24, isRound: true },
+  { id: 'hoop_30', category: 'hoop', name: 'Tamborek 30 cm (12")', desc: 'Maksymalny tamborek', widthCm: 28, heightCm: 28, isRound: true },
 ];
 
 export default function ImagePickerScreen() {
@@ -402,7 +410,7 @@ export default function ImagePickerScreen() {
       {/* Direct Pattern File Import Banner */}
       <View style={[styles.fileImportBanner, { backgroundColor: theme.primaryLight, borderColor: theme.primaryBorder }]}>
         <View style={[styles.fileImportIconBox, { backgroundColor: theme.surface }]}>
-          <Text style={{ fontSize: 24 }}>📥</Text>
+          <PatternFolderIcon size={24} color={theme.primary} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.fileImportTitle, { color: theme.primaryDark }]}>
@@ -420,7 +428,7 @@ export default function ImagePickerScreen() {
       {/* Preset selection card */}
       <View style={[styles.cozyCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
         <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
-          📸 Wybierz lub wgraj zdjęcie do konwersji
+          Wybierz lub wgraj zdjęcie do konwersji
         </Text>
         <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
           Wybierz jedną z gotowych grafik lub wgraj własne zdjęcie z galerii:
@@ -446,9 +454,9 @@ export default function ImagePickerScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={[styles.uploadButton, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]} onPress={pickImage} activeOpacity={0.85}>
-          <Text style={{ fontSize: 18, marginRight: 8 }}>📁</Text>
-          <Text style={[styles.uploadButtonText, { color: theme.textPrimary }]}>Wgraj własne zdjęcie z galerii / dysku</Text>
+        <TouchableOpacity style={[styles.uploadButton, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]} onPress={pickImage} activeOpacity={0.85}>
+          <CameraCraftIcon size={20} color={theme.primary} />
+          <Text style={[styles.uploadButtonText, { color: theme.textPrimary, marginLeft: 8 }]}>Wgraj własne zdjęcie z galerii / dysku</Text>
         </TouchableOpacity>
 
         {selectedImage && (
@@ -466,8 +474,8 @@ export default function ImagePickerScreen() {
         {showAspectAdvisor && (
           <View style={[styles.advisorCard, { backgroundColor: theme.primaryLight, borderColor: theme.primaryBorder }]}>
             <View style={styles.advisorHeader}>
-              <Text style={{ fontSize: 22 }}>📐</Text>
-              <View style={{ flex: 1 }}>
+              <FrameBoxIcon size={22} color={theme.primaryDark} />
+              <View style={{ flex: 1, marginLeft: 8 }}>
                 <Text style={[styles.advisorTitle, { color: theme.primaryDark }]}>
                   Wykryto prostokątne zdjęcie ({detectedAspect < 1 ? `${(1 / detectedAspect).toFixed(2)} : 1` : `1 : ${detectedAspect.toFixed(2)}`})
                 </Text>
@@ -489,8 +497,8 @@ export default function ImagePickerScreen() {
                 }}
                 activeOpacity={0.85}
               >
-                <Text style={{ fontSize: 18, marginRight: 8 }}>📐</Text>
-                <View style={{ flex: 1 }}>
+                <FrameBoxIcon size={18} color={fitMode === 'natural' ? theme.primary : theme.textSecondary} />
+                <View style={{ flex: 1, marginLeft: 8 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Text style={[styles.advisorBtnTitle, fitMode === 'natural' && { color: theme.primary, fontWeight: '800' }]}>
                       Naturalny prostokąt
@@ -514,8 +522,8 @@ export default function ImagePickerScreen() {
                 onPress={() => setFitMode('contain')}
                 activeOpacity={0.85}
               >
-                <Text style={{ fontSize: 18, marginRight: 8 }}>🖼️</Text>
-                <View style={{ flex: 1 }}>
+                <FrameBoxIcon size={18} color={fitMode === 'contain' ? theme.primary : theme.textSecondary} />
+                <View style={{ flex: 1, marginLeft: 8 }}>
                   <Text style={[styles.advisorBtnTitle, fitMode === 'contain' && { color: theme.primary, fontWeight: '800' }]}>
                     Zostaw puste pola kanwy (Letterbox)
                   </Text>
@@ -534,8 +542,8 @@ export default function ImagePickerScreen() {
                 onPress={() => setFitMode('cover')}
                 activeOpacity={0.85}
               >
-                <Text style={{ fontSize: 18, marginRight: 8 }}>✂️</Text>
-                <View style={{ flex: 1 }}>
+                <FrameBoxIcon size={18} color={fitMode === 'cover' ? theme.primary : theme.textSecondary} />
+                <View style={{ flex: 1, marginLeft: 8 }}>
                   <Text style={[styles.advisorBtnTitle, fitMode === 'cover' && { color: theme.primary, fontWeight: '800' }]}>
                     Wypełnij i przytnij (Kadrowanie)
                   </Text>
@@ -549,10 +557,12 @@ export default function ImagePickerScreen() {
           </View>
         )}
 
+        <RusticDivider color={theme.primary} secondaryColor={theme.sage} style={{ marginVertical: 12 }} />
+
         {/* Quick Brightness & Contrast Toggles */}
         <View style={styles.filterSection}>
           <Text style={[styles.filterSectionTitle, { color: theme.textPrimary }]}>
-            ✨ Szybka korekta tonalna zdjęcia:
+            Szybka korekta tonalna zdjęcia:
           </Text>
           <View style={styles.filterRow}>
             <View style={{ flex: 1 }}>
@@ -604,7 +614,7 @@ export default function ImagePickerScreen() {
           onPress={() => setActiveStep(2)}
           activeOpacity={0.88}
         >
-          <Text style={styles.stepNextBtnText}>Krok 2: Dobierz płótno i rozmiar ➔</Text>
+          <Text style={styles.stepNextBtnText}>Krok 2: Dobierz płótno i rozmiar ›</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -616,7 +626,7 @@ export default function ImagePickerScreen() {
       {/* Fabric choice card */}
       <View style={[styles.cozyCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
         <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
-          🪡 Rodzaj kanwy i gęstość ściegów
+          Rodzaj kanwy i gęstość ściegów
         </Text>
         <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
           Wybierz tkaninę lub wpisz dowolny własny count:
@@ -625,11 +635,11 @@ export default function ImagePickerScreen() {
         {/* Fabric Type Pills */}
         <View style={styles.fabricTypeRow}>
           {[
-            { id: 'aida', label: 'Kanwa Aida', icon: '◻️' },
-            { id: 'evenweave', label: 'Evenweave', icon: '🧵' },
-            { id: 'linen', label: 'Len (Linen)', icon: '🌾' },
-            { id: 'plastic', label: 'Plastikowa', icon: '🔲' },
-            { id: 'custom', label: 'Własny count', icon: '✏️' },
+            { id: 'aida', label: 'Kanwa Aida' },
+            { id: 'evenweave', label: 'Evenweave' },
+            { id: 'linen', label: 'Len (Linen)' },
+            { id: 'plastic', label: 'Plastikowa' },
+            { id: 'custom', label: 'Własny count' },
           ].map((ft) => (
             <TouchableOpacity
               key={ft.id}
@@ -646,7 +656,6 @@ export default function ImagePickerScreen() {
                 else if (ft.id === 'custom') { setIsCustomCount(true); }
               }}
             >
-              <Text style={{ fontSize: 13, marginRight: 4 }}>{ft.icon}</Text>
               <Text style={[styles.fabricTypeBtnText, fabricType === ft.id && { color: '#ffffff', fontWeight: '800' }]}>
                 {ft.label}
               </Text>
@@ -821,7 +830,7 @@ export default function ImagePickerScreen() {
       {/* Sizing & Canvas Formats Card */}
       <View style={[styles.cozyCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
         <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
-          📐 Rozmiar haftu i format oprawy
+          Rozmiar haftu i format oprawy
         </Text>
         <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
           Wybierz gotową ramkę, tamborek lub określ własne wymiary w cm bądź ściegach:
@@ -830,9 +839,9 @@ export default function ImagePickerScreen() {
         {/* Fit Mode Selector Pills */}
         <View style={[styles.fitModeRow, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}>
           {[
-            { id: 'natural', label: '📐 Prostokąt zdjęcia', desc: 'Pełen kadr bez rozciągania' },
-            { id: 'contain', label: '🖼️ Puste pole kanwy', desc: 'Brak haftu na marginesach' },
-            { id: 'cover', label: '✂️ Przytnij krawędzie', desc: 'Wypełnij ramkę kadrując' },
+            { id: 'natural', label: 'Prostokąt zdjęcia', desc: 'Pełen kadr bez rozciągania' },
+            { id: 'contain', label: 'Puste pole kanwy', desc: 'Brak haftu na marginesach' },
+            { id: 'cover', label: 'Przytnij krawędzie', desc: 'Wypełnij ramkę kadrując' },
           ].map((m) => (
             <TouchableOpacity
               key={m.id}
@@ -859,7 +868,7 @@ export default function ImagePickerScreen() {
             onPress={() => setSizeMode('formats')}
           >
             <Text style={[styles.tabText, sizeMode === 'formats' && styles.tabTextActive]}>
-              🖼️ Formaty & tamborki
+              Formaty i tamborki
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -867,7 +876,7 @@ export default function ImagePickerScreen() {
             onPress={() => setSizeMode('cm')}
           >
             <Text style={[styles.tabText, sizeMode === 'cm' && styles.tabTextActive]}>
-              📏 Dowolne cm
+              Wymiary w cm
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -875,7 +884,7 @@ export default function ImagePickerScreen() {
             onPress={() => setSizeMode('stitches')}
           >
             <Text style={[styles.tabText, sizeMode === 'stitches' && styles.tabTextActive]}>
-              🔢 Liczba ściegów
+              Liczba ściegów
             </Text>
           </TouchableOpacity>
         </View>
@@ -886,8 +895,8 @@ export default function ImagePickerScreen() {
             <View style={styles.formatFilterRow}>
               {[
                 { id: 'all', label: 'Wszystkie' },
-                { id: 'frame', label: '🖼️ Ramki foto' },
-                { id: 'hoop', label: '⭕ Tamborki' },
+                { id: 'frame', label: 'Ramki foto' },
+                { id: 'hoop', label: 'Tamborki' },
               ].map((cat) => (
                 <TouchableOpacity
                   key={cat.id}
@@ -928,7 +937,11 @@ export default function ImagePickerScreen() {
                     activeOpacity={0.8}
                   >
                     <View style={styles.formatCardTop}>
-                      <Text style={{ fontSize: 18, marginRight: 8 }}>{fmt.icon}</Text>
+                      {fmt.isRound ? (
+                        <HoopIcon size={20} color={theme.primary} style={{ marginRight: 8 }} />
+                      ) : (
+                        <FrameBoxIcon size={20} color={theme.primary} style={{ marginRight: 8 }} />
+                      )}
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.formatCardTitle, isSelected && { color: theme.primary, fontWeight: '800' }]}>
                           {fmt.name}
@@ -943,7 +956,7 @@ export default function ImagePickerScreen() {
                     </View>
                     <View style={styles.formatCardFooter}>
                       <Text style={[styles.formatCardFooterText, { color: theme.textMuted }]}>
-                        📐 Na wybranej kanwie {effectiveCount} ct: ok. {approxStitchesW} × {approxStitchesH} krz.
+                        Na wybranej kanwie {effectiveCount} ct: ok. {approxStitchesW} × {approxStitchesH} krz.
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -1170,7 +1183,7 @@ export default function ImagePickerScreen() {
           onPress={() => setActiveStep(3)}
           activeOpacity={0.88}
         >
-          <Text style={styles.stepNextBtnText}>Krok 3: Wybierz nici DMC i styl ➔</Text>
+          <Text style={styles.stepNextBtnText}>Krok 3: Wybierz nici DMC i styl ›</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -1181,7 +1194,7 @@ export default function ImagePickerScreen() {
     <View style={styles.stepContainer}>
       <View style={[styles.cozyCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
         <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
-          🧵 Paleta mulin i stylizacja haftu
+          Paleta mulin i stylizacja haftu
         </Text>
         <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
           Wybierz producenta nici oraz limit kolorów dla optymalnego odwzorowania:
@@ -1241,7 +1254,7 @@ export default function ImagePickerScreen() {
             onPress={() => setCleanupConfetti(true)}
           >
             <Text style={[styles.chipText, cleanupConfetti && styles.chipTextActive]}>
-              🧹 Czyste plamy (usuń confetti)
+              Czyste plamy (usuń confetti)
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -1249,7 +1262,7 @@ export default function ImagePickerScreen() {
             onPress={() => setCleanupConfetti(false)}
           >
             <Text style={[styles.chipText, !cleanupConfetti && styles.chipTextActive]}>
-              🎨 Płynne cieniowanie fotograficzne
+              Płynne cieniowanie fotograficzne
             </Text>
           </TouchableOpacity>
         </View>
@@ -1259,7 +1272,7 @@ export default function ImagePickerScreen() {
       <View style={[styles.estimatorCard, { backgroundColor: theme.surface, borderColor: colors.sageBorder }]}>
         <View style={styles.estimatorHeader}>
           <Text style={[styles.estimatorTitle, { color: theme.textPrimary }]}>
-            📊 Podsumowanie materiałowe
+            Podsumowanie materiałowe
           </Text>
           <View style={styles.livePill}>
             <Text style={styles.livePillText}>Na żywo</Text>
@@ -1276,7 +1289,7 @@ export default function ImagePickerScreen() {
           </View>
 
           <View style={styles.estimatorItemHighlight}>
-            <Text style={styles.estimatorLabelHighlight}>✂️ Wytnij płótno:</Text>
+            <Text style={styles.estimatorLabelHighlight}>Wytnij płótno:</Text>
             <Text style={styles.estimatorValueHighlight}>
               {cutWidthCm} × {cutHeightCm} cm
             </Text>
@@ -1370,7 +1383,7 @@ export default function ImagePickerScreen() {
       <View style={[styles.stickyBottomBar, { backgroundColor: theme.surface, borderTopColor: theme.surfaceBorder }]}>
         <View style={styles.summaryBadge}>
           <Text style={[styles.summaryBadgeTextBold, { color: theme.textPrimary }]}>
-            📐 {estWidthCm} × {estHeightCm} cm • {fitMode === 'contain' ? 'Letterbox' : (fitMode === 'cover' ? 'Crop' : 'Prostokąt')}
+            {estWidthCm} × {estHeightCm} cm • {fitMode === 'contain' ? 'Letterbox' : (fitMode === 'cover' ? 'Crop' : 'Prostokąt')}
           </Text>
           <Text style={[styles.summaryBadgeTextSub, { color: theme.textSecondary }]}>
             {estWidthStitches}×{estHeightStitches} krz. • {threadBrand} • {maxColors === 0 ? 'Bez limitu' : `${maxColors} kol.`}
@@ -1382,7 +1395,7 @@ export default function ImagePickerScreen() {
           onPress={convertImage}
           activeOpacity={0.88}
         >
-          <Text style={styles.convertFloatingBtnText}>✨ Wygeneruj haft</Text>
+          <Text style={styles.convertFloatingBtnText}>Wygeneruj haft</Text>
         </TouchableOpacity>
       </View>
     </View>

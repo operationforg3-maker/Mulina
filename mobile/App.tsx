@@ -16,6 +16,8 @@ import TokenPurchaseScreen from './src/screens/TokenPurchaseScreen';
 import InventoryScreen from './src/screens/InventoryScreen';
 import FAQScreen from './src/screens/FAQScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import SettingsWizardScreen from './src/screens/SettingsWizardScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
@@ -33,6 +35,8 @@ export type RootStackParamList = {
   Inventory: undefined;
   FAQ: undefined;
   Profile: undefined;
+  Settings: undefined;
+  Onboarding: undefined;
 };
 
 import MuAlinaTabBar from './src/components/MuAlinaTabBar';
@@ -175,6 +179,16 @@ function MainNavigator() {
           name="Login"
           component={LoginScreen}
           options={{ title: 'Logowanie Firebase' }}
+        />
+        <Stack.Screen
+          name="Settings"
+          component={SettingsWizardScreen}
+          options={{ title: 'Kreator Ustawień Pracowni' }}
+        />
+        <Stack.Screen
+          name="Onboarding"
+          component={OnboardingScreen}
+          options={{ title: 'Samouczek & Przewodnik', headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

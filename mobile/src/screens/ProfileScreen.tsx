@@ -250,6 +250,25 @@ export default function ProfileScreen() {
             >
               <Text style={styles.shareStoryBtnText}>Wygeneruj pastelową kartę na Stories / TikTok</Text>
             </TouchableOpacity>
+
+            {/* Settings & Onboarding Quick Strip */}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12, width: '100%' }}>
+              <TouchableOpacity
+                style={[styles.syncBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}
+                onPress={() => navigation.navigate('Settings' as any)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.syncBtnText, { color: theme.textPrimary }]}>⚙️ Kreator Ustawień</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.syncBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}
+                onPress={() => navigation.navigate('Onboarding' as any)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.syncBtnText, { color: theme.textPrimary }]}>📖 Samouczek Pracowni</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Badges & Achievements */}

@@ -1,48 +1,108 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { colors, shadows } from '../theme/colors';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { shadows } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
+import {
+  HoopIcon,
+  NeedleIcon,
+  CameraCraftIcon,
+  FlossSkeinIcon,
+  FlowerIcon,
+  RusticDivider,
+} from '../components/RusticIcons';
 
 const FAQScreen = () => {
+  const navigation = useNavigation<any>();
+  const { theme } = useTheme();
   const { isTabletOrLarger } = useResponsive();
 
   const faqs = [
     {
-      q: 'Jak działa zaznaczanie wielu kratek na raz (drag-to-mark)?',
-      a: 'W edytorze wzoru upewnij się, że masz aktywne narzędzie 🪡 Haftuj oraz włączony tryb 🔒 Przeciąganie palcem. Wystarczy przesunąć palcem lub rysikiem (Apple Pencil / S-Pen) po kratkach, aby błyskawicznie oznaczyć wyhaftowane fragmenty! Gdy chcesz przesunąć płótno, kliknij kłódeczkę, aby przełączyć na 🔓 Przewijanie.',
+      icon: (c: string) => <NeedleIcon size={20} color={c} />,
+      q: 'Jak działa bezpieczne zaznaczanie krzyżyków?',
+      a: 'W edytorze wzoru kłódeczka i wykrywanie gestów zabezpieczają przed omyłkowym zaznaczeniem. Gdy wykonujesz gest pinch-to-zoom lub przesuwasz kanwę dwoma palcami, aplikacja automatycznie blokuje zaznaczanie ściegów. Możesz bezpiecznie powiększać drobne detale!',
     },
     {
-      q: 'Jak zainstalować aplikację na iPadzie lub Androidzie?',
-      a: 'Na iPadzie: otwórz stronę w Safari, kliknij ikonę Udostępnij [ 📤 ] i wybierz „Do ekranu początkowego”. Na Androidzie: kliknij menu trzech kropek [ ⋮ ] w Chrome i kliknij „Zainstaluj aplikację”. Mulina uruchamia się w trybie pełnoekranowym bez pasków przeglądarki.',
+      icon: (c: string) => <HoopIcon size={20} color={c} />,
+      q: 'Jak zainstalować aplikację na iPadzie lub Androidzie jako PWA?',
+      a: 'Na iPadzie/iPhone: otwórz aplikację w Safari, kliknij ikonę Udostępnij [ 📤 ] i wybierz „Do ekranu początkowego”. Na Androidzie: kliknij menu trzech kropek [ ⋮ ] w Chrome i kliknij „Zainstaluj aplikację”. Mu\'Alina uruchamia się w pełnoekranowym trybie natywnym.',
     },
     {
+      icon: (c: string) => <CameraCraftIcon size={20} color={c} />,
       q: 'Jak dobrać gęstość kanwy (Aida 11, 14, 16, 18 ct)?',
-      a: 'Liczba ct (count) to liczba krzyżyków na jeden cal (2.54 cm). Aida 14 ct to najbardziej uniwersalna kanwa (5.4 ściegu/cm). Jeśli chcesz większe, łatwiejsze ściegi – wybierz Aida 11 ct. Jeśli zależy Ci na dużej szczegółowości – wybierz Aida 16 lub 18 ct.',
+      a: 'Liczba ct (count) oznacza liczbę krzyżyków na 1 cal (2.54 cm). Aida 14 ct to najbardziej uniwersalna kanwa (5.4 ściegu/cm). Jeśli chcesz większe, łatwiejsze ściegi – wybierz Aida 11 ct. Przy drobnych, wyrazistych portretach – wybierz Aida 16 lub 18 ct.',
     },
     {
-      q: 'Czy mogę wyeksportować wzór do wydruku PDF?',
-      a: 'Tak! W edytorze wzoru kliknij przycisk „📄 PDF Wzoru” w prawym górnym rogu. Aplikacja wygeneruje profesjonalny arkusz z okładką, tabelą zakupową mulin DMC z podziałem na pasemka oraz czytelnym schematem symboli z siatką 10×10 i linijkami współrzędnych.',
+      icon: (c: string) => <FlossSkeinIcon size={20} color={c} />,
+      q: 'Czy mogę wyeksportować schemat do wydruku PDF?',
+      a: 'Tak! W edytorze wzoru kliknij przycisk „📄 PDF”. Aplikacja wygeneruje arkusz z okładką, tabelą zakupową mulin DMC z podziałem na metry/pasemka oraz czytelnym schematem symboli z siatką 10×10.',
     },
     {
-      q: 'Czy aplikacja działa offline bez dostępu do sieci?',
-      a: 'Tak! Dzięki technologii PWA (Progressive Web App) i lokalnemu zapisowi, po załadowaniu wzoru możesz haftować offline w podróży, w parku czy w samolocie.',
+      icon: (c: string) => <FlowerIcon size={20} color={c} />,
+      q: 'Czym jest funkcja usuwania confetti (anty-confetti)?',
+      a: 'Pojedyncze, odosobnione krzyżyki o unikalnym kolorze (tzw. confetti) są uciążliwe przy haftowaniu, ponieważ wymagają ciągłej zmiany igły i nitek. Nasz algorytm zastępuje samotne piksele dominującym kolorem otoczenia, drastycznie ułatwiając pracę.',
     },
     {
-      q: 'Czym jest funkcja „Usuń confetti” (🪄)?',
-      a: 'Pojedyncze, odosobnione krzyżyki o unikalnym kolorze (tzw. confetti) są uciążliwe przy haftowaniu, ponieważ wymagają częstej zmiany nitki. Narzędzie różdżki 🪄 zastępuje samotne ściegi najbardziej dominującym kolorem otoczenia.',
+      icon: (c: string) => <HoopIcon size={20} color={c} />,
+      q: 'Jak działa synchronizacja w chmurze Firebase?',
+      a: 'Po zalogowaniu w Profilu możesz jednym kliknięciem zapisać całą swoją bibliotekę wzorów i stan wyhaftowanych kratek w bezpiecznej bazie Firebase Firestore. Na drugim urządzeniu kliknij „Pobierz z chmury”, a wzory natychmiast się połączą.',
     },
   ];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={[styles.innerWrapper, isTabletOrLarger && styles.tabletWrapper]}>
-        <Text style={styles.title}>❓ Poradnik & Najczęstsze pytania</Text>
-        <Text style={styles.subtitle}>Wskazówki dla hafciarek korzystających z tabletu i telefonu</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: theme.textPrimary }]}>Poradnik & Najczęstsze Pytania</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Kompendium wiedzy o hafcie, doborze mulin i cyfrowym tamborku
+          </Text>
+        </View>
 
+        {/* Quick Help Strip */}
+        <View style={styles.quickHelpStrip}>
+          <TouchableOpacity
+            style={[styles.helpStripBtn, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}
+            onPress={() => navigation.navigate('Onboarding')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.helpStripBtnText, { color: theme.primary }]}>📖 Otwórz Samouczek (Walkthrough)</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.helpStripBtn, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}
+            onPress={() => navigation.navigate('Settings')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.helpStripBtnText, { color: theme.textPrimary }]}>⚙️ Kreator Ustawień</Text>
+          </TouchableOpacity>
+        </View>
+
+        <RusticDivider color={theme.primary} secondaryColor={theme.sage} style={{ marginVertical: 14 }} />
+
+        {/* FAQ Items */}
         {faqs.map((faq, idx) => (
-          <View key={idx} style={styles.qaBox}>
-            <Text style={styles.q}>• {faq.q}</Text>
-            <Text style={styles.a}>{faq.a}</Text>
+          <View
+            key={idx}
+            style={[
+              styles.qaBox,
+              { backgroundColor: theme.surface, borderColor: theme.surfaceBorder },
+            ]}
+          >
+            <View style={styles.qaHeaderRow}>
+              <View style={[styles.qaIconCircle, { backgroundColor: theme.primaryLight }]}>
+                {faq.icon(theme.primary)}
+              </View>
+              <Text style={[styles.q, { color: theme.textPrimary }]}>{faq.q}</Text>
+            </View>
+            <Text style={[styles.a, { color: theme.textSecondary }]}>{faq.a}</Text>
           </View>
         ))}
       </View>
@@ -53,7 +113,6 @@ const FAQScreen = () => {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: colors.background, 
   },
   content: { 
     padding: 20, 
@@ -65,41 +124,72 @@ const styles = StyleSheet.create({
   },
   tabletWrapper: {
     maxWidth: 820,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
   title: { 
     fontSize: 22, 
     fontWeight: '800', 
     marginBottom: 4, 
-    color: colors.textPrimary, 
-    textAlign: 'center' 
+    textAlign: 'center',
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 13,
-    color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 24,
+    lineHeight: 18,
+  },
+  quickHelpStrip: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 6,
+  },
+  helpStripBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.card,
+  },
+  helpStripBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   qaBox: { 
     marginBottom: 14, 
-    backgroundColor: colors.surface, 
-    borderRadius: 16, 
+    borderRadius: 18, 
     padding: 18,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
     ...shadows.card,
   },
+  qaHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
+  },
+  qaIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   q: { 
-    fontWeight: '700', 
-    fontSize: 15, 
-    marginBottom: 8, 
-    color: colors.primaryDark,
-    lineHeight: 21,
+    flex: 1,
+    fontWeight: '800', 
+    fontSize: 14, 
+    lineHeight: 20,
   },
   a: { 
     fontSize: 13, 
-    color: colors.textSecondary, 
-    lineHeight: 20 
+    lineHeight: 20,
+    paddingLeft: 48,
   },
 });
 

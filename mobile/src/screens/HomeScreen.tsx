@@ -134,6 +134,7 @@ export default function HomeScreen() {
             style={[styles.themeBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}
             onPress={cycleTheme}
             activeOpacity={0.8}
+            accessibilityLabel="Zmień motyw"
           >
             <FlowerIcon size={13} color={theme.primary} />
             <Text style={[styles.themeBtnText, { color: theme.textPrimary, marginLeft: 5 }]}>{getThemeLabel()}</Text>
@@ -143,15 +144,35 @@ export default function HomeScreen() {
             style={[styles.streakBtn, { backgroundColor: '#FFF3E0', borderColor: '#FFE0B2' }]}
             onPress={() => navigation.navigate('Profile')}
             activeOpacity={0.8}
+            accessibilityLabel="Seria haftu"
           >
             <HearthFlameIcon size={14} color="#E65100" />
             <Text style={[styles.streakBtnText, { marginLeft: 4 }]}>7 dni</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={[styles.iconTopBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}
+            onPress={() => navigation.navigate('Onboarding' as any)}
+            activeOpacity={0.8}
+            accessibilityLabel="Samouczek"
+          >
+            <Text style={{ fontSize: 13 }}>📖</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.iconTopBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}
+            onPress={() => navigation.navigate('Settings' as any)}
+            activeOpacity={0.8}
+            accessibilityLabel="Ustawienia pracowni"
+          >
+            <Text style={{ fontSize: 13 }}>⚙️</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.avatarBtn, { backgroundColor: theme.primaryLight, borderColor: theme.primaryBorder }]}
             onPress={() => navigation.navigate('Profile')}
             activeOpacity={0.8}
+            accessibilityLabel="Konto i Profil"
           >
             {user && (user.displayName || user.email) ? (
               <Text style={{ fontSize: 13, fontWeight: '800', color: theme.primary }}>
@@ -341,6 +362,34 @@ export default function HomeScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.quickTitle, { color: theme.textPrimary }]}>Odkryj Wzory</Text>
               <Text style={[styles.quickDesc, { color: theme.textSecondary }]}>Marketplace z licencją DRM</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.quickCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}
+            onPress={() => navigation.navigate('Settings' as any)}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.quickIconCircle, { backgroundColor: '#F3E5F5' }]}>
+              <Text style={{ fontSize: 20 }}>⚙️</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.quickTitle, { color: theme.textPrimary }]}>Kreator Ustawień</Text>
+              <Text style={[styles.quickDesc, { color: theme.textSecondary }]}>Kanwa, gesty, palety & chmura</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.quickCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}
+            onPress={() => navigation.navigate('Onboarding' as any)}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.quickIconCircle, { backgroundColor: '#FFF8E1' }]}>
+              <Text style={{ fontSize: 20 }}>📖</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.quickTitle, { color: theme.textPrimary }]}>Przewodnik i Poradnik</Text>
+              <Text style={[styles.quickDesc, { color: theme.textSecondary }]}>Samouczek krok po kroku</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -552,6 +601,14 @@ const styles = StyleSheet.create({
     color: '#E65100',
   },
   avatarBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  iconTopBtn: {
     width: 34,
     height: 34,
     borderRadius: 17,

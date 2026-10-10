@@ -32,6 +32,7 @@ import {
   importPatternsBackup,
 } from '../services/patternStorage';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { parsePatternFile } from '../services/parsers/patternParsers';
 import {
   HoopIcon,
@@ -169,6 +170,10 @@ export default function PatternLibraryScreen() {
         const fileObj = (file as any).file;
         if (fileObj) {
           content = await fileObj.text();
+        }
+      } else {
+        if (file.uri) {
+          content = await FileSystem.readAsStringAsync(file.uri);
         }
       }
 
@@ -353,6 +358,10 @@ export default function PatternLibraryScreen() {
       if (Platform.OS === 'web') {
         const fileObj = (file as any).file;
         if (fileObj) content = await fileObj.text();
+      } else {
+        if (file.uri) {
+          content = await FileSystem.readAsStringAsync(file.uri);
+        }
       }
 
       if (content) {

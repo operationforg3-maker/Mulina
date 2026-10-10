@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { savePattern } from '../services/patternStorage';
@@ -272,6 +273,10 @@ export default function ImagePickerScreen() {
           const fileObj = (asset as any).file;
           if (fileObj) {
             content = await fileObj.text();
+          }
+        } else {
+          if (asset.uri) {
+            content = await FileSystem.readAsStringAsync(asset.uri);
           }
         }
 

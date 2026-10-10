@@ -16,6 +16,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
 import { listRecentPatterns, PatternListItem, savePattern } from '../services/patternStorage';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import AndroidDownloadModal from '../components/AndroidDownloadModal';
 import { parsePatternFile } from '../services/parsers/patternParsers';
 import {
@@ -72,6 +73,10 @@ export default function HomeScreen() {
         const fileObj = (file as any).file;
         if (fileObj) {
           content = await fileObj.text();
+        }
+      } else {
+        if (file.uri) {
+          content = await FileSystem.readAsStringAsync(file.uri);
         }
       }
 
@@ -140,15 +145,19 @@ export default function HomeScreen() {
             <Text style={[styles.themeBtnText, { color: theme.textPrimary, marginLeft: 5 }]}>{getThemeLabel()}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.streakBtn, { backgroundColor: '#FFF3E0', borderColor: '#FFE0B2' }]}
-            onPress={() => navigation.navigate('Profile')}
-            activeOpacity={0.8}
-            accessibilityLabel="Seria haftu"
-          >
-            <HearthFlameIcon size={14} color="#E65100" />
-            <Text style={[styles.streakBtnText, { marginLeft: 4 }]}>7 dni</Text>
-          </TouchableOpacity>
+          {recentPatterns.length > 0 && (
+            <TouchableOpacity
+              style={[styles.streakBtn, { backgroundColor: '#FFF3E0', borderColor: '#FFE0B2' }]}
+              onPress={() => navigation.navigate('Profile')}
+              activeOpacity={0.8}
+              accessibilityLabel="Wzory w pracowni"
+            >
+              <HearthFlameIcon size={14} color="#E65100" />
+              <Text style={[styles.streakBtnText, { marginLeft: 4 }]}>
+                {`${recentPatterns.length} ${recentPatterns.length === 1 ? 'wzór' : recentPatterns.length < 5 ? 'wzory' : 'wzorów'}`}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[styles.iconTopBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}
@@ -232,7 +241,7 @@ export default function HomeScreen() {
           <Text style={[styles.greetingSubtitle, { color: theme.textSecondary }]}>
             {user && !user.isAnonymous
               ? 'Twoje konto jest połączone z chmurą Firebase. Tamborek czeka na kolejną nitkę!'
-              : 'Dziś wyhaftowano 260 krzyżyków. Tamborek czeka na kolejną nitkę!'}
+              : 'Rozpocznij swoją przygodę z haftem krzyżykowym!'}
           </Text>
         </View>
 
@@ -240,63 +249,98 @@ export default function HomeScreen() {
 
         {/* HERO CARD: Current Active WIP Tamborek */}
         <View style={[styles.heroCard, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
-          <View style={styles.heroHeaderRow}>
-            <View style={styles.wipTag}>
-              <View style={styles.wipDot} />
-              <Text style={styles.wipTagText}>AKTUALNIE NA TAMBORKU</Text>
-            </View>
-            <Text style={[styles.wipTimeLeft, { color: theme.textSecondary }]}>
-              {activeWip ? `Zaktualizowano: ${new Date(activeWip.updated_at).toLocaleDateString('pl-PL')}` : 'Aida 14ct • 16 kolorów DMC'}
-            </Text>
-          </View>
-
-          <View style={styles.heroBodyRow}>
-            <View style={[styles.heroThumb, { backgroundColor: theme.backgroundAlt, alignItems: 'center', justifyContent: 'center' }]}>
-              <HoopIcon size={42} color={theme.primary} />
-            </View>
-            <View style={styles.heroDetails}>
-              <Text style={[styles.heroPatternName, { color: theme.textPrimary }]} numberOfLines={1}>
-                {activeWip ? activeWip.name : 'Czerwona Róża (Wzór demonstracyjny)'}
-              </Text>
-              <Text style={[styles.heroPatternMeta, { color: theme.textSecondary }]}>
-                {activeWip
-                  ? `${activeWip.width_stitches}×${activeWip.height_stitches} krzyżyków • ${activeWip.color_count} kolorów DMC`
-                  : '32×32 krzyżyków • Gesty 1/2 palce • Backstitch • Parking'}
-              </Text>
-
-              {/* Progress Bar */}
-              <View style={styles.progressRow}>
-                <View style={[styles.progressTrack, { backgroundColor: theme.backgroundAlt }]}>
-                  <View
-                    style={[
-                      styles.progressBarFill,
-                      {
-                        width: `${activeWip ? Math.max(activeWip.progress_percent, 5) : 34}%`,
-                        backgroundColor: theme.primary,
-                      },
-                    ]}
-                  />
+          {activeWip ? (
+            <>
+              <View style={styles.heroHeaderRow}>
+                <View style={styles.wipTag}>
+                  <View style={styles.wipDot} />
+                  <Text style={styles.wipTagText}>AKTUALNIE NA TAMBORKU</Text>
                 </View>
-                <Text style={[styles.progressValText, { color: theme.primary }]}>
-                  {activeWip ? `${activeWip.progress_percent}%` : '34%'}
+                <Text style={[styles.wipTimeLeft, { color: theme.textSecondary }]}>
+                  Zaktualizowano: {new Date(activeWip.updated_at).toLocaleDateString('pl-PL')}
                 </Text>
               </View>
-            </View>
-          </View>
 
-          {/* Action Button: Kontynuuj Haftowanie */}
-          <TouchableOpacity
-            style={[styles.resumeBtn, { backgroundColor: theme.primary }]}
-            onPress={() =>
-              navigation.navigate('PatternEditor', {
-                patternId: activeWip ? activeWip.pattern_id : 'demo',
-              })
-            }
-            activeOpacity={0.88}
-          >
-            <NeedleIcon size={18} color="#FFFFFF" />
-            <Text style={[styles.resumeBtnText, { marginLeft: 8 }]}>Kontynuuj haftowanie</Text>
-          </TouchableOpacity>
+              <View style={styles.heroBodyRow}>
+                <View style={[styles.heroThumb, { backgroundColor: theme.backgroundAlt, alignItems: 'center', justifyContent: 'center' }]}>
+                  <HoopIcon size={42} color={theme.primary} />
+                </View>
+                <View style={styles.heroDetails}>
+                  <Text style={[styles.heroPatternName, { color: theme.textPrimary }]} numberOfLines={1}>
+                    {activeWip.name}
+                  </Text>
+                  <Text style={[styles.heroPatternMeta, { color: theme.textSecondary }]}>
+                    {activeWip.width_stitches}×{activeWip.height_stitches} krzyżyków • {activeWip.color_count} kolorów DMC
+                  </Text>
+
+                  {/* Progress Bar */}
+                  <View style={styles.progressRow}>
+                    <View style={[styles.progressTrack, { backgroundColor: theme.backgroundAlt }]}>
+                      <View
+                        style={[
+                          styles.progressBarFill,
+                          {
+                            width: `${Math.max(activeWip.progress_percent, 5)}%`,
+                            backgroundColor: theme.primary,
+                          },
+                        ]}
+                      />
+                    </View>
+                    <Text style={[styles.progressValText, { color: theme.primary }]}>
+                      {activeWip.progress_percent}%
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Action Button: Kontynuuj Haftowanie */}
+              <TouchableOpacity
+                style={[styles.resumeBtn, { backgroundColor: theme.primary }]}
+                onPress={() =>
+                  navigation.navigate('PatternEditor', {
+                    patternId: activeWip.pattern_id,
+                  })
+                }
+                activeOpacity={0.88}
+              >
+                <NeedleIcon size={18} color="#FFFFFF" />
+                <Text style={[styles.resumeBtnText, { marginLeft: 8 }]}>Kontynuuj haftowanie</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={styles.emptyHeroContainer}>
+              <View style={[styles.emptyHeroIconCircle, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}>
+                <HoopIcon size={44} color={theme.primary} />
+              </View>
+              <Text style={[styles.emptyHeroTitle, { color: theme.textPrimary }]}>
+                Twój tamborek jest jeszcze pusty 🌸
+              </Text>
+              <Text style={[styles.emptyHeroSubtitle, { color: theme.textSecondary }]}>
+                Rozpocznij swój pierwszy haft ze zdjęcia lub wgraj gotowy schemat
+              </Text>
+              <View style={styles.emptyHeroButtonsRow}>
+                <TouchableOpacity
+                  style={[styles.emptyHeroBtnPrimary, { backgroundColor: theme.primary }]}
+                  onPress={() => navigation.navigate('ImagePicker')}
+                  activeOpacity={0.88}
+                >
+                  <CameraCraftIcon size={18} color="#FFFFFF" />
+                  <Text style={styles.emptyHeroBtnTextPrimary}>Nowy ze zdjęcia</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.emptyHeroBtnSecondary, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}
+                  onPress={handleDirectFileImport}
+                  activeOpacity={0.88}
+                >
+                  <PatternFolderIcon size={18} color={theme.primary} />
+                  <Text style={[styles.emptyHeroBtnTextSecondary, { color: theme.textPrimary }]}>
+                    {importing ? 'Wczytywanie...' : 'Wgraj schemat'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
 
         <RusticDivider color={theme.primary} secondaryColor={theme.sage} style={{ marginVertical: 8 }} />
@@ -846,5 +890,68 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     marginRight: 4,
+  },
+  emptyHeroContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  emptyHeroIconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  emptyHeroTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  emptyHeroSubtitle: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 18,
+    paddingHorizontal: 12,
+  },
+  emptyHeroButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  emptyHeroBtnPrimary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    gap: 8,
+  },
+  emptyHeroBtnSecondary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  emptyHeroBtnTextPrimary: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  emptyHeroBtnTextSecondary: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

@@ -10,6 +10,8 @@ import {
   Platform,
   PanResponder,
   Linking,
+  Modal,
+  TextInput,
 } from 'react-native';
 import Svg, { Line, Circle as SvgCircle } from 'react-native-svg';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
@@ -133,10 +135,13 @@ export default function PatternEditorScreen() {
   const viewportRef = useRef<PatternCanvasViewportRef>(null);
 
   // Tools: stitch, box_select, parking, picker, pencil, eraser, fill
+  const [editorMode, setEditorMode] = useState<'stitch' | 'edit'>('stitch');
   const [activeTool, setActiveTool] = useState<'stitch' | 'box_select' | 'parking' | 'pencil' | 'eraser' | 'fill' | 'picker'>('stitch');
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [showLegendModal, setShowLegendModal] = useState(false);
   const [showShopModal, setShowShopModal] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameText, setRenameText] = useState('');
   const [stitchLock, setStitchLock] = useState(true); // true = drag marks stitches, false = scroll mode
 
   // Backstitch & Parking State
@@ -637,26 +642,18 @@ export default function PatternEditorScreen() {
         renamePattern(pattern.pattern_id, trimmed);
       }
     } else {
-      Alert.prompt?.(
-        'Zmień nazwę wzoru',
-        'Wpisz nową nazwę:',
-        [
-          { text: 'Anuluj', style: 'cancel' },
-          {
-            text: 'Zapisz',
-            onPress: (text?: string) => {
-              if (text && text.trim()) {
-                const trimmed = text.trim();
-                setPattern(prev => prev ? { ...prev, name: trimmed } : null);
-                renamePattern(pattern.pattern_id, trimmed);
-              }
-            }
-          }
-        ],
-        'plain-text',
-        pattern.name
-      );
+      setRenameText(pattern.name);
+      setShowRenameModal(true);
     }
+  };
+
+  const handleRenameConfirm = () => {
+    if (renameText.trim() && renameText.trim() !== pattern?.name) {
+      const trimmed = renameText.trim();
+      setPattern(prev => prev ? { ...prev, name: trimmed } : null);
+      if (pattern) renamePattern(pattern.pattern_id, trimmed);
+    }
+    setShowRenameModal(false);
   };
 
   const selectedThread = color_palette[selectedColorIndex] || color_palette[0];
@@ -835,98 +832,134 @@ export default function PatternEditorScreen() {
 
       {/* Cross-Stitch Tools Bar - Scrollable horizontally on mobile, clean dock */}
       <View style={[styles.toolbarWrapper, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+        <View style={[styles.modeSwitcher, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}>
+          <TouchableOpacity
+            style={[styles.modeBtn, editorMode === 'stitch' && { backgroundColor: theme.primary }]}
+            onPress={() => { setEditorMode('stitch'); setActiveTool('stitch'); }}
+          >
+            <NeedleIcon size={14} color={editorMode === 'stitch' ? '#FFF' : theme.textSecondary} />
+            <Text style={[styles.modeBtnText, editorMode === 'stitch' && { color: '#FFF' }]}>🪡 Haftuj</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeBtn, editorMode === 'edit' && { backgroundColor: '#FF9800' }]}
+            onPress={() => {
+              setEditorMode('edit');
+              setActiveTool('pencil');
+              setGestureToast('Uwaga: edycja zmienia sam wzór');
+              setTimeout(() => setGestureToast(null), 2500);
+            }}
+          >
+            <PencilCraftIcon size={14} color={editorMode === 'edit' ? '#FFF' : theme.textSecondary} />
+            <Text style={[styles.modeBtnText, editorMode === 'edit' && { color: '#FFF' }]}>✏️ Edytuj wzór</Text>
+          </TouchableOpacity>
+        </View>
+
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.toolbarScrollContent}
         >
           <View style={styles.toolGroup}>
-            <TouchableOpacity
-              style={[styles.toolBtn, activeTool === 'stitch' && styles.toolBtnActive]}
-              onPress={() => setActiveTool('stitch')}
-            >
-              <NeedleIcon size={16} color={activeTool === 'stitch' ? colors.primaryDark : colors.textSecondary} />
-              <Text style={[styles.toolText, activeTool === 'stitch' && styles.toolTextActive]}>Haftuj</Text>
-            </TouchableOpacity>
+            {editorMode === 'stitch' ? (
+              <>
+                <TouchableOpacity
+                  style={[styles.toolBtn, activeTool === 'stitch' && styles.toolBtnActive]}
+                  onPress={() => setActiveTool('stitch')}
+                >
+                  <NeedleIcon size={16} color={activeTool === 'stitch' ? colors.primaryDark : colors.textSecondary} />
+                  <Text style={[styles.toolText, activeTool === 'stitch' && styles.toolTextActive]}>Haftuj</Text>
+                </TouchableOpacity>
 
-            {/* Box Area Selection (1-finger long press or tool click) */}
-            <TouchableOpacity
-              style={[styles.toolBtn, activeTool === 'box_select' && styles.toolBtnActive]}
-              onPress={() => {
-                setActiveTool('box_select');
-                setIsBoxSelecting(false);
-                setBoxStart(null);
-              }}
-            >
-              <FrameBoxIcon size={16} color={activeTool === 'box_select' ? colors.primaryDark : colors.textSecondary} />
-              <Text style={[styles.toolText, activeTool === 'box_select' && styles.toolTextActive]}>Ramka</Text>
-            </TouchableOpacity>
+                {/* Box Area Selection (1-finger long press or tool click) */}
+                <TouchableOpacity
+                  style={[styles.toolBtn, activeTool === 'box_select' && styles.toolBtnActive]}
+                  onPress={() => {
+                    setActiveTool('box_select');
+                    setIsBoxSelecting(false);
+                    setBoxStart(null);
+                  }}
+                >
+                  <FrameBoxIcon size={16} color={activeTool === 'box_select' ? colors.primaryDark : colors.textSecondary} />
+                  <Text style={[styles.toolText, activeTool === 'box_select' && styles.toolTextActive]}>Ramka</Text>
+                </TouchableOpacity>
 
-            {/* Parking Mode */}
-            <TouchableOpacity
-              style={[styles.toolBtn, activeTool === 'parking' && styles.toolBtnActive]}
-              onPress={() => {
-                if (activeTool === 'parking') {
-                  // Cycle corner
-                  const corners: Array<'NW'|'NE'|'SW'|'SE'> = ['NE', 'SE', 'SW', 'NW'];
-                  const nextIdx = (corners.indexOf(parkingCorner) + 1) % corners.length;
-                  setParkingCorner(corners[nextIdx]);
-                } else {
-                  setActiveTool('parking');
-                }
-              }}
-            >
-              <PearlPinIcon size={16} color={activeTool === 'parking' ? colors.primaryDark : colors.textSecondary} />
-              <Text style={[styles.toolText, activeTool === 'parking' && styles.toolTextActive]}>
-                Parkuj ({parkingCorner})
-              </Text>
-            </TouchableOpacity>
+                {/* Parking Mode */}
+                <TouchableOpacity
+                  style={[styles.toolBtn, activeTool === 'parking' && styles.toolBtnActive]}
+                  onPress={() => {
+                    if (activeTool === 'parking') {
+                      // Cycle corner
+                      const corners: Array<'NW'|'NE'|'SW'|'SE'> = ['NE', 'SE', 'SW', 'NW'];
+                      const nextIdx = (corners.indexOf(parkingCorner) + 1) % corners.length;
+                      setParkingCorner(corners[nextIdx]);
+                    } else {
+                      setActiveTool('parking');
+                    }
+                  }}
+                >
+                  <PearlPinIcon size={16} color={activeTool === 'parking' ? colors.primaryDark : colors.textSecondary} />
+                  <Text style={[styles.toolText, activeTool === 'parking' && styles.toolTextActive]}>
+                    Parkuj ({parkingCorner})
+                  </Text>
+                </TouchableOpacity>
 
-            {/* Drag / Scroll Lock Switcher */}
-            {activeTool === 'stitch' && (
-              <TouchableOpacity
-                style={[styles.lockBtn, stitchLock ? styles.lockBtnActive : styles.lockBtnInactive]}
-                onPress={() => setStitchLock(!stitchLock)}
-                activeOpacity={0.85}
-              >
-                <LockCraftIcon size={14} locked={stitchLock} color={stitchLock ? colors.sageDark : colors.textMuted} />
-                <Text style={[styles.lockText, stitchLock && styles.lockTextActive]}>
-                  {stitchLock ? 'Przeciągaj' : 'Przewijaj'}
-                </Text>
-              </TouchableOpacity>
+                {/* Drag / Scroll Lock Switcher */}
+                {activeTool === 'stitch' && (
+                  <TouchableOpacity
+                    style={[styles.lockBtn, stitchLock ? styles.lockBtnActive : styles.lockBtnInactive]}
+                    onPress={() => setStitchLock(!stitchLock)}
+                    activeOpacity={0.85}
+                  >
+                    <LockCraftIcon size={14} locked={stitchLock} color={stitchLock ? colors.sageDark : colors.textMuted} />
+                    <Text style={[styles.lockText, stitchLock && styles.lockTextActive]}>
+                      {stitchLock ? 'Przeciągaj' : 'Przewijaj'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.toolBtn, activeTool === 'picker' && styles.toolBtnActive]}
+                  onPress={() => setActiveTool('picker')}
+                >
+                  <ZoomMagnifierIcon size={16} type="in" color={activeTool === 'picker' ? colors.primaryDark : colors.textSecondary} />
+                  <Text style={[styles.toolText, activeTool === 'picker' && styles.toolTextActive]}>Pipeta</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={[styles.toolBtn, activeTool === 'pencil' && styles.toolBtnActive]}
+                  onPress={() => setActiveTool('pencil')}
+                >
+                  <PencilCraftIcon size={16} color={activeTool === 'pencil' ? colors.primaryDark : colors.textSecondary} />
+                  <Text style={[styles.toolText, activeTool === 'pencil' && styles.toolTextActive]}>Rysuj</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.toolBtn, activeTool === 'eraser' && styles.toolBtnActive]}
+                  onPress={() => setActiveTool('eraser')}
+                >
+                  <EraserCraftIcon size={16} color={activeTool === 'eraser' ? colors.primaryDark : colors.textSecondary} />
+                  <Text style={[styles.toolText, activeTool === 'eraser' && styles.toolTextActive]}>Gumka</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.toolBtn, activeTool === 'fill' && styles.toolBtnActive]}
+                  onPress={() => setActiveTool('fill')}
+                >
+                  <FillBucketIcon size={16} color={activeTool === 'fill' ? colors.primaryDark : colors.textSecondary} />
+                  <Text style={[styles.toolText, activeTool === 'fill' && styles.toolTextActive]}>Wypełnij</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.toolBtn, activeTool === 'picker' && styles.toolBtnActive]}
+                  onPress={() => setActiveTool('picker')}
+                >
+                  <ZoomMagnifierIcon size={16} type="in" color={activeTool === 'picker' ? colors.primaryDark : colors.textSecondary} />
+                  <Text style={[styles.toolText, activeTool === 'picker' && styles.toolTextActive]}>Pipeta</Text>
+                </TouchableOpacity>
+              </>
             )}
-
-            <TouchableOpacity
-              style={[styles.toolBtn, activeTool === 'picker' && styles.toolBtnActive]}
-              onPress={() => setActiveTool('picker')}
-            >
-              <ZoomMagnifierIcon size={16} type="in" color={activeTool === 'picker' ? colors.primaryDark : colors.textSecondary} />
-              <Text style={[styles.toolText, activeTool === 'picker' && styles.toolTextActive]}>Pipeta</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.toolBtn, activeTool === 'pencil' && styles.toolBtnActive]}
-              onPress={() => setActiveTool('pencil')}
-            >
-              <PencilCraftIcon size={16} color={activeTool === 'pencil' ? colors.primaryDark : colors.textSecondary} />
-              <Text style={[styles.toolText, activeTool === 'pencil' && styles.toolTextActive]}>Rysuj</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.toolBtn, activeTool === 'eraser' && styles.toolBtnActive]}
-              onPress={() => setActiveTool('eraser')}
-            >
-              <EraserCraftIcon size={16} color={activeTool === 'eraser' ? colors.primaryDark : colors.textSecondary} />
-              <Text style={[styles.toolText, activeTool === 'eraser' && styles.toolTextActive]}>Gumka</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.toolBtn, activeTool === 'fill' && styles.toolBtnActive]}
-              onPress={() => setActiveTool('fill')}
-            >
-              <FillBucketIcon size={16} color={activeTool === 'fill' ? colors.primaryDark : colors.textSecondary} />
-              <Text style={[styles.toolText, activeTool === 'fill' && styles.toolTextActive]}>Wypełnij</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={styles.toolSeparator} />
@@ -1404,6 +1437,43 @@ export default function PatternEditorScreen() {
           </View>
         );
       })()}
+
+      {/* Rename Modal (cross-platform replacement for Alert.prompt) */}
+      <Modal
+        visible={showRenameModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRenameModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.renameModalContainer, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+            <Text style={[styles.renameModalTitle, { color: theme.textPrimary }]}>Zmień nazwę wzoru</Text>
+            <TextInput
+              style={[styles.renameInput, { color: theme.textPrimary, borderColor: theme.surfaceBorder, backgroundColor: theme.backgroundAlt }]}
+              value={renameText}
+              onChangeText={setRenameText}
+              placeholder="Nowa nazwa wzoru"
+              placeholderTextColor={theme.textSecondary}
+              autoFocus
+              selectTextOnFocus
+            />
+            <View style={styles.renameModalButtons}>
+              <TouchableOpacity
+                style={[styles.renameModalBtn, { borderColor: theme.surfaceBorder }]}
+                onPress={() => setShowRenameModal(false)}
+              >
+                <Text style={{ color: theme.textSecondary }}>Anuluj</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.renameModalBtn, { backgroundColor: theme.primary }]}
+                onPress={handleRenameConfirm}
+              >
+                <Text style={{ color: '#FFF', fontWeight: '600' }}>Zapisz</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -2313,5 +2383,65 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '800',
+  },
+  modeSwitcher: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginHorizontal: 12,
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  modeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    gap: 6,
+  },
+  modeBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  renameModalContainer: {
+    width: '85%',
+    maxWidth: 400,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+  },
+  renameModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  renameInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  renameModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  renameModalBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
 });

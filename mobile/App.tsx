@@ -1,10 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Platform, ActivityIndicator, Image } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './src/services/authContext';
+import { getAppPreferences } from './src/services/appPreferences';
 
 import HomeScreen from './src/screens/HomeScreen';
 import PatternLibraryScreen from './src/screens/PatternLibraryScreen';
@@ -107,14 +108,67 @@ function MainTabs() {
   );
 }
 
+export function SplashGate() {
+  const { theme } = useTheme();
+
+  return (
+    <View style={[styles.splashContainer, { backgroundColor: theme.background }]}>
+      <Image
+        source={require('./assets/mualina_logo.png')}
+        style={styles.splashLogo}
+        resizeMode="contain"
+      />
+      <ActivityIndicator size="large" color={theme.primary} style={styles.splashSpinner} />
+    </View>
+  );
+}
+
 function MainNavigator() {
   const { theme, themeMode } = useTheme();
+  const [isLoading, setIsLoading] = useState(true);
+  const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>('MainTabs');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkPreferences() {
+      try {
+        const prefs = await getAppPreferences();
+        if (isMounted) {
+          if (!prefs.hasCompletedOnboarding) {
+            setInitialRoute('Onboarding');
+          } else {
+            setInitialRoute('MainTabs');
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load app preferences for onboarding check:', e);
+        if (isMounted) {
+          setInitialRoute('MainTabs');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    checkPreferences();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (isLoading) {
+    return <SplashGate />;
+  }
 
   return (
     <NavigationContainer>
       <StatusBar style={themeMode === 'cozy' ? 'dark' : 'light'} />
       <Stack.Navigator
-        initialRouteName="MainTabs"
+        initialRouteName={initialRoute}
         screenOptions={{
           headerStyle: {
             backgroundColor: theme.primary,
@@ -206,3 +260,18 @@ export default function App() {
     </ErrorBoundary>
   );
 }
+
+const styles = StyleSheet.create({
+  splashContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  splashLogo: {
+    width: 140,
+    height: 140,
+  },
+  splashSpinner: {
+    marginTop: 24,
+  },
+});

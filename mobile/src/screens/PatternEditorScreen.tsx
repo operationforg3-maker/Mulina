@@ -269,6 +269,28 @@ export default function PatternEditorScreen() {
     })();
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
+      // Don't block if navigating programmatically (e.g., after save)
+      if (e.data.action.type === 'GO_BACK' || e.data.action.type === 'POP') {
+        e.preventDefault();
+        Alert.alert(
+          'Wyjść z tamborka?',
+          'Postęp został zapisany automatycznie.',
+          [
+            { text: 'Zostań', style: 'cancel' },
+            {
+              text: 'Wyjść',
+              style: 'destructive',
+              onPress: () => navigation.dispatch(e.data.action),
+            },
+          ]
+        );
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   if (loading || !pattern) {
     return (
       <View style={styles.centerContainer}>

@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  RefreshControl,
   Platform,
   Alert,
   Image,
+  Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -40,8 +42,20 @@ export default function HomeScreen() {
   const { user } = useAuth();
 
   const [recentPatterns, setRecentPatterns] = useState<PatternListItem[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const [showAndroidModal, setShowAndroidModal] = useState(false);
   const [importing, setImporting] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const patterns = await listRecentPatterns();
+      setRecentPatterns(patterns || []);
+    } catch (e) {
+      console.warn('Error refreshing:', e);
+    }
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     (async () => {
@@ -117,6 +131,20 @@ export default function HomeScreen() {
 
   // Active WIP project: first item from storage or demo
   const activeWip = recentPatterns.length > 0 ? recentPatterns[0] : null;
+
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (activeWip) {
+      Animated.timing(progressAnim, {
+        toValue: activeWip.progress_percent,
+        duration: 800,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      progressAnim.setValue(0);
+    }
+  }, [activeWip?.progress_percent]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -212,6 +240,14 @@ export default function HomeScreen() {
       <ScrollView
         contentContainerStyle={[styles.scrollContent, isTabletOrLarger && styles.tabletScrollContent]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
+          />
+        }
       >
         {/* Enchanting Rustic Atelier Hero Banner */}
         <View style={[styles.bannerContainer, { borderColor: theme.surfaceBorder }]}>
@@ -276,11 +312,14 @@ export default function HomeScreen() {
                   {/* Progress Bar */}
                   <View style={styles.progressRow}>
                     <View style={[styles.progressTrack, { backgroundColor: theme.backgroundAlt }]}>
-                      <View
+                      <Animated.View
                         style={[
                           styles.progressBarFill,
                           {
-                            width: `${Math.max(activeWip.progress_percent, 5)}%`,
+                            width: progressAnim.interpolate({
+                              inputRange: [0, 100],
+                              outputRange: ['0%', '100%'],
+                            }),
                             backgroundColor: theme.primary,
                           },
                         ]}

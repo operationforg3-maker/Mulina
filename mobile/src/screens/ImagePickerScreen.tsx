@@ -304,11 +304,40 @@ export default function ImagePickerScreen() {
     }
   };
 
-  const pickImage = async () => {
+  const processPickedAsset = async (asset: ImagePicker.ImagePickerAsset) => {
+    if (asset.base64) {
+      const mime = asset.uri.endsWith('.png') ? 'image/png' : 'image/jpeg';
+      setSelectedImage(`data:${mime};base64,${asset.base64}`);
+    } else if (Platform.OS === 'web' && asset.uri.startsWith('blob:')) {
+      try {
+        const blobRes = await fetch(asset.uri);
+        const blob = await blobRes.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            setSelectedImage(reader.result);
+          } else {
+            setSelectedImage(asset.uri);
+          }
+        };
+        reader.readAsDataURL(blob);
+      } catch {
+        setSelectedImage(asset.uri);
+      }
+    } else {
+      setSelectedImage(asset.uri);
+    }
+  };
+
+  const handlePickFromGallery = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Brak uprawnień', 'Potrzebujemy dostępu do galerii, aby wgrać zdjęcie.');
+        if (Platform.OS === 'web') {
+          window.alert('Potrzebujemy dostępu do galerii, aby wgrać zdjęcie.');
+        } else {
+          Alert.alert('Brak uprawnień', 'Potrzebujemy dostępu do galerii, aby wgrać zdjęcie.');
+        }
         return;
       }
 
@@ -320,29 +349,7 @@ export default function ImagePickerScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        const asset = result.assets[0];
-        if (asset.base64) {
-          const mime = asset.uri.endsWith('.png') ? 'image/png' : 'image/jpeg';
-          setSelectedImage(`data:${mime};base64,${asset.base64}`);
-        } else if (Platform.OS === 'web' && asset.uri.startsWith('blob:')) {
-          try {
-            const blobRes = await fetch(asset.uri);
-            const blob = await blobRes.blob();
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              if (typeof reader.result === 'string') {
-                setSelectedImage(reader.result);
-              } else {
-                setSelectedImage(asset.uri);
-              }
-            };
-            reader.readAsDataURL(blob);
-          } catch {
-            setSelectedImage(asset.uri);
-          }
-        } else {
-          setSelectedImage(asset.uri);
-        }
+        await processPickedAsset(result.assets[0]);
       }
     } catch (e: any) {
       console.error('Error picking image:', e);
@@ -353,6 +360,68 @@ export default function ImagePickerScreen() {
       }
     }
   };
+
+  const handlePickFromCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        if (Platform.OS === 'web') {
+          window.alert('Potrzebujemy dostępu do aparatu, aby zrobić zdjęcie.');
+        } else {
+          Alert.alert('Brak uprawnień', 'Potrzebujemy dostępu do aparatu, aby zrobić zdjęcie.');
+        }
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.9,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        await processPickedAsset(result.assets[0]);
+      }
+    } catch (e: any) {
+      console.error('Error taking photo:', e);
+      if (Platform.OS === 'web') {
+        window.alert('Nie udało się zrobić zdjęcia: ' + e.message);
+      } else {
+        Alert.alert('Błąd', 'Nie udało się zrobić zdjęcia: ' + e.message);
+      }
+    }
+  };
+
+  const handlePickImage = async () => {
+    if (Platform.OS === 'web') {
+      const useCamera = window.confirm('Skąd chcesz wziąć zdjęcie?\n\nOK = 📷 Aparat\nAnuluj = 🖼️ Galeria / Dysk');
+      if (useCamera) {
+        handlePickFromCamera();
+      } else {
+        handlePickFromGallery();
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Źródło zdjęcia',
+      'Skąd chcesz wziąć zdjęcie?',
+      [
+        {
+          text: '📷 Aparat',
+          onPress: handlePickFromCamera,
+        },
+        {
+          text: '🖼️ Galeria',
+          onPress: handlePickFromGallery,
+        },
+        { text: 'Anuluj', style: 'cancel' },
+      ]
+    );
+  };
+
+  const pickImage = handlePickImage;
 
   const convertImage = async () => {
     if (!selectedImage) {
@@ -459,9 +528,9 @@ export default function ImagePickerScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={[styles.uploadButton, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]} onPress={pickImage} activeOpacity={0.85}>
+        <TouchableOpacity style={[styles.uploadButton, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]} onPress={handlePickImage} activeOpacity={0.85}>
           <CameraCraftIcon size={20} color={theme.primary} />
-          <Text style={[styles.uploadButtonText, { color: theme.textPrimary, marginLeft: 8 }]}>Wgraj własne zdjęcie z galerii / dysku</Text>
+          <Text style={[styles.uploadButtonText, { color: theme.textPrimary, marginLeft: 8 }]}>Zrób zdjęcie aparatem lub wybierz z galerii</Text>
         </TouchableOpacity>
 
         {selectedImage && (

@@ -168,6 +168,38 @@ export default function PatternEditorScreen() {
   const [history, setHistory] = useState<number[][][]>([]);
   const [historyStep, setHistoryStep] = useState(-1);
 
+  // Auto-save Indicator State
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const saveTimerRef = useRef<any>(null);
+
+  const triggerSaveIndicator = useCallback(() => {
+    setSaveStatus('saving');
+    setTimeout(() => {
+      setSaveStatus('saved');
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
+    }, 300);
+  }, []);
+
+  const triggerSaveWithPattern = useCallback(async (updatedPattern: any) => {
+    setSaveStatus('saving');
+    try {
+      await savePattern(updatedPattern as any);
+      setSaveStatus('saved');
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (e) {
+      console.warn('Failed to auto-save pattern', e);
+      setSaveStatus('idle');
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
+
   // Multi-touch tracking
   const touchStartRef = useRef<{ time: number; count: number }>({ time: 0, count: 0 });
   const longPressTimerRef = useRef<any>(null);
@@ -287,7 +319,7 @@ export default function PatternEditorScreen() {
           last_worked: new Date().toISOString(),
         },
       };
-      savePattern(updated as any);
+      triggerSaveWithPattern(updated);
       return;
     }
 
@@ -438,9 +470,9 @@ export default function PatternEditorScreen() {
           last_worked: new Date().toISOString(),
         },
       };
-      savePattern(updated as any);
+      triggerSaveWithPattern(updated);
     }
-  }, [pattern, selectedColorIndex]);
+  }, [pattern, selectedColorIndex, triggerSaveWithPattern]);
 
   // Web pointer event handlers
   const webPointerHandlers = Platform.OS === 'web' ? {
@@ -512,10 +544,10 @@ export default function PatternEditorScreen() {
     setBackstitchLines(prev => {
       const updated = prev.map(line => line.id === id ? { ...line, completed: !line.completed } : line);
       if (pattern) {
-        savePattern({
+        triggerSaveWithPattern({
           ...pattern,
           backstitch: updated,
-        } as any);
+        });
       }
       return updated;
     });
@@ -551,7 +583,7 @@ export default function PatternEditorScreen() {
           last_worked: new Date().toISOString(),
         },
       };
-      savePattern(updated as any);
+      triggerSaveWithPattern(updated);
     }
     setGestureToast(`Zaznaczono ramką: ${count} ściegów`);
     setTimeout(() => setGestureToast(null), 2000);
@@ -699,7 +731,7 @@ export default function PatternEditorScreen() {
               last_worked: new Date().toISOString(),
             },
           };
-          savePattern(updated as any);
+          triggerSaveWithPattern(updated);
         }
       }}
       onPickColor={(colorIdx) => {
@@ -740,6 +772,15 @@ export default function PatternEditorScreen() {
                   {pattern.name}
                 </Text>
                 <PencilCraftIcon size={12} color={theme.textMuted} />
+                {saveStatus !== 'idle' && (
+                  <View style={[styles.saveIndicator, { backgroundColor: saveStatus === 'saved' ? '#E8F5E9' : '#FFF3E0' }]}>
+                    {saveStatus === 'saving' ? (
+                      <ActivityIndicator size="small" color="#FF9800" />
+                    ) : (
+                      <Text style={{ color: '#4CAF50', fontSize: 11, fontWeight: '600' }}>✓ Zapisano</Text>
+                    )}
+                  </View>
+                )}
               </View>
               <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
                 {width}×{height} ({pattern.dimensions.width_cm}×{pattern.dimensions.height_cm} cm) • {color_palette.length} kol. (kliknij by zmienić nazwę)
@@ -2443,5 +2484,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: 'transparent',
+  },
+  saveIndicator: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginLeft: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

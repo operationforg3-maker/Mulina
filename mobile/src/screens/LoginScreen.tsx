@@ -35,6 +35,8 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -238,17 +240,26 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                   )}
                 </View>
-                <TextInput
-                  style={[
-                    styles.input,
-                    { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder, color: theme.textPrimary },
-                  ]}
-                  placeholder="••••••••"
-                  placeholderTextColor={theme.textMuted}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                />
+                <View style={[styles.passwordInputWrapper, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}>
+                  <TextInput
+                    style={[
+                      styles.passwordInput,
+                      { color: theme.textPrimary },
+                    ]}
+                    placeholder="••••••••"
+                    placeholderTextColor={theme.textMuted}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeToggle}
+                    onPress={() => setShowPassword(!showPassword)}
+                    accessibilityLabel={showPassword ? 'Ukryj hasło' : 'Pokaż hasło'}
+                  >
+                    <Text style={{ fontSize: 18 }}>{showPassword ? '🙈' : '👁️'}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
 
@@ -434,6 +445,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 14,
     fontSize: 14,
+  },
+  passwordInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    position: 'relative',
+  },
+  passwordInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: 14,
+    paddingRight: 44,
+    fontSize: 14,
+  },
+  eyeToggle: {
+    padding: 10,
+    position: 'absolute',
+    right: 4,
   },
   resetInfo: {
     fontSize: 12,

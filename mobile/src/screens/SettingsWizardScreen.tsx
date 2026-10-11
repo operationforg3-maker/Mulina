@@ -27,6 +27,7 @@ import {
   FlossSkeinIcon,
   FlowerIcon,
   BirdIcon,
+  CrossStitchIcon,
   RusticDivider,
 } from '../components/RusticIcons';
 
@@ -301,7 +302,98 @@ export default function SettingsWizardScreen() {
           </View>
         </View>
 
-        {/* SECTION 3: Domyślne Parametry Wzoru */}
+        {/* SECTION 3: Ergonomia Haftowania */}
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+          <View style={styles.cardHeaderRow}>
+            <CrossStitchIcon size={20} color={theme.primary} />
+            <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+              Ergonomia Haftowania
+            </Text>
+          </View>
+          <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
+            Sygnały dotykowe, dźwięki i wygoda wielogodzinnej pracy na tamborku
+          </Text>
+
+          {/* Haptic Feedback */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextCol}>
+              <Text style={[styles.settingLabel, { color: theme.textPrimary }]}>
+                📳 Wibracja przy zaznaczaniu
+              </Text>
+              <Text style={[styles.settingDesc, { color: theme.textSecondary }]}>
+                Delikatna wibracja potwierdzająca zaznaczenie krzyżyka
+              </Text>
+            </View>
+            <Switch
+              value={prefs.hapticFeedback}
+              onValueChange={(val) => updatePreference('hapticFeedback', val)}
+              trackColor={{ false: theme.surfaceBorder, true: theme.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          <RusticDivider color={theme.surfaceBorder} secondaryColor={theme.surfaceBorder} style={{ marginVertical: 8 }} />
+
+          {/* Sound Feedback */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextCol}>
+              <Text style={[styles.settingLabel, { color: theme.textPrimary }]}>
+                {prefs.soundFeedback ? '🔊' : '🔇'} Dźwięki aplikacji
+              </Text>
+              <Text style={[styles.settingDesc, { color: theme.textSecondary }]}>
+                Dźwięki przy zaznaczaniu i ukończeniu koloru
+              </Text>
+            </View>
+            <Switch
+              value={prefs.soundFeedback}
+              onValueChange={(val) => updatePreference('soundFeedback', val)}
+              trackColor={{ false: theme.surfaceBorder, true: theme.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          <RusticDivider color={theme.surfaceBorder} secondaryColor={theme.surfaceBorder} style={{ marginVertical: 8 }} />
+
+          {/* Keep Screen Awake */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextCol}>
+              <Text style={[styles.settingLabel, { color: theme.textPrimary }]}>
+                ☕ Nie wyłączaj ekranu
+              </Text>
+              <Text style={[styles.settingDesc, { color: theme.textSecondary }]}>
+                Ekran nie wygaśnie podczas haftowania na tamborku
+              </Text>
+            </View>
+            <Switch
+              value={prefs.keepScreenAwake}
+              onValueChange={(val) => updatePreference('keepScreenAwake', val)}
+              trackColor={{ false: theme.surfaceBorder, true: theme.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          <RusticDivider color={theme.surfaceBorder} secondaryColor={theme.surfaceBorder} style={{ marginVertical: 8 }} />
+
+          {/* Auto Save Progress */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextCol}>
+              <Text style={[styles.settingLabel, { color: theme.textPrimary }]}>
+                💾 Autozapis postępu
+              </Text>
+              <Text style={[styles.settingDesc, { color: theme.textSecondary }]}>
+                Automatycznie zapisuj postęp haftu co kilka sekund
+              </Text>
+            </View>
+            <Switch
+              value={prefs.autoSaveProgress}
+              onValueChange={(val) => updatePreference('autoSaveProgress', val)}
+              trackColor={{ false: theme.surfaceBorder, true: theme.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+        </View>
+
+        {/* SECTION 4: Domyślne Parametry Wzoru */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
           <View style={styles.cardHeaderRow}>
             <NeedleIcon size={20} color={theme.primary} />
@@ -370,7 +462,7 @@ export default function SettingsWizardScreen() {
           </View>
         </View>
 
-        {/* SECTION 4: Nici i Paleta */}
+        {/* SECTION 5: Nici i Paleta */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
           <View style={styles.cardHeaderRow}>
             <FlossSkeinIcon size={20} color={theme.primary} />
@@ -406,7 +498,7 @@ export default function SettingsWizardScreen() {
           </View>
         </View>
 
-        {/* SECTION 5: Konto i Chmura Firebase */}
+        {/* SECTION 6: Konto i Chmura Firebase */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
           <View style={styles.cardHeaderRow}>
             <BirdIcon size={20} color={theme.primary} />

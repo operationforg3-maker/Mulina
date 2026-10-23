@@ -93,24 +93,15 @@ export default function LoginScreen() {
       if (mode === 'signup') {
         await signUp(email, password, displayName);
         Alert.alert('Witaj w Mu\'Alina!', 'Twoje konto zostało pomyślnie utworzone.');
-        navigation.goBack();
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        }
       } else {
         await signIn(email, password);
-        navigation.goBack();
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        }
       }
-    } catch (err: any) {
-      setErrorMsg(translateFirebaseError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGuestLogin = async () => {
-    setLoading(true);
-    setErrorMsg(null);
-    try {
-      await signInAsGuest();
-      navigation.goBack();
     } catch (err: any) {
       setErrorMsg(translateFirebaseError(err));
     } finally {
@@ -298,21 +289,6 @@ export default function LoginScreen() {
                 <Text style={[styles.cancelResetText, { color: theme.primary }]}>Wróć do logowania</Text>
               </TouchableOpacity>
             )}
-
-            <RusticDivider color={theme.primary} secondaryColor={theme.sage} style={{ marginVertical: 14 }} />
-
-            {/* Guest Login Option */}
-            <TouchableOpacity
-              style={[styles.guestBtn, { backgroundColor: theme.backgroundAlt, borderColor: theme.surfaceBorder }]}
-              onPress={handleGuestLogin}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              <BirdIcon size={18} color={theme.primary} />
-              <Text style={[styles.guestBtnText, { color: theme.textPrimary, marginLeft: 8 }]}>
-                Kontynuuj jako gość (anonimowo)
-              </Text>
-            </TouchableOpacity>
           </View>
         </View>
 

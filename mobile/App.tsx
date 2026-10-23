@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
-import { AuthProvider } from './src/services/authContext';
+import { AuthProvider, useAuth } from './src/services/authContext';
 import { getAppPreferences } from './src/services/appPreferences';
 
 import HomeScreen from './src/screens/HomeScreen';
@@ -125,6 +125,7 @@ export function SplashGate() {
 
 function MainNavigator() {
   const { theme, themeMode } = useTheme();
+  const { user, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>('MainTabs');
 
@@ -158,10 +159,30 @@ function MainNavigator() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user]);
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return <SplashGate />;
+  }
+
+  const isAuthenticated = Boolean(user && !user.isAnonymous);
+
+  if (!isAuthenticated) {
+    return (
+      <NavigationContainer>
+        <StatusBar style={themeMode === 'cozy' ? 'dark' : 'light'} />
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            contentStyle: {
+              backgroundColor: theme.background,
+            },
+          }}
+        >
+          <Stack.Screen name="Login" component={LoginScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    );
   }
 
   return (
